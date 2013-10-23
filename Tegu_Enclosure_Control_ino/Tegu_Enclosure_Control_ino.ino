@@ -86,7 +86,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
 //#define A3 
 //A4 SDA    I2C/TWI
 //A5 SCL    I2C/TWI
-Servo dampers;
+Servo damperServos;
 /*************************************************************************************************
 *                                       Global Variables                                         *
 **************************************************************************************************/
@@ -127,7 +127,7 @@ void setup()
 dTemp.begin();
 
 //Sets up servos to be controlled. One output going to three servos.
-dampers.attach(6); 
+damperServos.attach(6); 
 
 // SERIAL
   Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
@@ -151,15 +151,13 @@ void loop(){
     // if there's a reading ready, read it:
       sensor.measure(temp, rh);          //SHT1x reading
       RTC.read(tm);                      //RTC Reading
-      dTemp.requestTemperatures();
-      // Set Alarms/Setpoints when temp is higher than 31C
-  ///
    lastReadingTime = millis();
   }
   }
   // listen for incoming Ethernet connections:
   // Case statement here?
   listenForEthernetClients();
+  dayMode();
 }
 
 /*************************************************************************************************
@@ -242,8 +240,8 @@ digitalWrite(PUMP, HIGH);
 // Fan On        
 digitalWrite(FAN, HIGH);
 
-// Dampers closed / controlled
-dampers.write(90);    // Closed position
+// damperServos closed / controlled
+damperServos.write(90);    // Closed position
 
 // Heat lamps on / controlled
 digitalWrite(MVL, HIGH);
@@ -262,8 +260,8 @@ digitalWrite(PUMP, LOW);
 // Fan on /low?
 digitalWrite(FAN, LOW);
 
-// Dampers closed / controlled
-dampers.write(90);    // Closed position
+// damperServos closed / controlled
+damperServos.write(90);    // Closed position
 
 // Heat Lamps off
 digitalWrite(MVL, LOW);
@@ -282,24 +280,24 @@ digitalWrite(PUMP, LOW);
 // Fan on 
 digitalWrite(FAN, HIGH);
 
-// Dampers Open
-dampers.write(0);    // Open position
+// damperServos Open
+damperServos.write(0);    // Open position
 
 // Heat lamps off
 digitalWrite(MVL, LOW);
 
 }
 
-int checkTemp(){
+boolean checkTemp(){
  boolean a;
   if (temp > 75){
     a = 1;
     Serial.println(a);
   }
-  else{
+  if (temp < 75){
     a = 0;
     Serial.println(a);
-  return a;
   }  
+  return a;
 }
 
