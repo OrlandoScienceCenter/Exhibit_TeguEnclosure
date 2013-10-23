@@ -95,7 +95,7 @@ Servo dampers;
   float temp;
   float rh;
   tmElements_t tm;       
-  int tempNotify;  
+
   
   
 /*************************************************************************************************
@@ -153,7 +153,6 @@ void loop(){
       RTC.read(tm);                      //RTC Reading
       dTemp.requestTemperatures();
       // Set Alarms/Setpoints when temp is higher than 31C
-      tempNotify = checkTemp();
   ///
    lastReadingTime = millis();
   }
@@ -199,7 +198,7 @@ void listenForEthernetClients() {
            client.print((dTemp.getTempCByIndex(0))*1.8+33);  
            client.print("F    ");
            client.println("<br />  Alarms - ");
-           client.print(tempNotify);
+           client.print(checkTemp());
            client.println("<br />");  
            client.print("Time = ");
            client.print(tm.Hour);
@@ -292,15 +291,15 @@ digitalWrite(MVL, LOW);
 }
 
 int checkTemp(){
- boolean alarm;
+ boolean a;
   if (temp > 75){
-    alarm = 1;
-    Serial.println(alarm);
+    a = 1;
+    Serial.println(a);
   }
   else{
-    alarm = 0;
-    Serial.println(alarm);
-  return alarm;
+    a = 0;
+    Serial.println(a);
+  return a;
   }  
 }
 
