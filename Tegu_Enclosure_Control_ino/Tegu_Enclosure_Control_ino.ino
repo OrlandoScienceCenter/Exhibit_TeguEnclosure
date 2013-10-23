@@ -69,7 +69,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
   OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
   DallasTemperature dTemp(&oneWire);  // Pass our oneWire reference to Dallas Temperature. 
   DeviceAddress dTemp1;
-
+  
 
 /*************************************************************************************************
 *                                        Other Pin Defines                                       *
@@ -94,7 +94,8 @@ Servo dampers;
   long lastReadingTime = 0;
   float temp;
   float rh;
-  tmElements_t tm;                
+  tmElements_t tm;       
+  int tempNotify;  
   
   
 /*************************************************************************************************
@@ -152,9 +153,7 @@ void loop(){
       RTC.read(tm);                      //RTC Reading
       dTemp.requestTemperatures();
       // Set Alarms/Setpoints when temp is higher than 31C
-      dTemp.setHighAlarmTemp(dTemp1, 31);
-      // alarn when temp is lower than 27C
-      dTemp.setLowAlarmTemp(dTemp1, 21);
+      tempNotify = checkTemp();
   ///
    lastReadingTime = millis();
   }
@@ -200,7 +199,7 @@ void listenForEthernetClients() {
            client.print((dTemp.getTempCByIndex(0))*1.8+33);  
            client.print("F    ");
            client.println("<br />  Alarms - ");
-           client.print(checkTemp());
+           client.print(tempNotify);
            client.println("<br />");  
            client.print("Time = ");
            client.print(tm.Hour);
@@ -292,13 +291,15 @@ digitalWrite(MVL, LOW);
 
 }
 
-boolean checkTemp(){
+int checkTemp(){
  boolean alarm;
   if (temp > 75){
     alarm = 1;
+    Serial.println(alarm);
   }
   else{
     alarm = 0;
+    Serial.println(alarm);
   return alarm;
   }  
 }
