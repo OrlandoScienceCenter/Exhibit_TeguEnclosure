@@ -72,7 +72,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
 **************************************************************************************************/
 #define ONE_WIRE_BUS A0               // Where is the data pin plugged into?
   OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas tempSHT1xerature ICs)
-  DallasTemperature dTemps(&oneWire);  // Pass our oneWire reference to Dallas Temperature. 
+  DallasTemperature dallasSensors(&oneWire);  // Pass our oneWire reference to Dallas Temperature. 
   DeviceAddress dTemp1 = { 0x28, 0xA3, 0x27, 0x23, 0x5, 0x0, 0x0, 0x7F }; //28A327230500007F;
   
 
@@ -137,7 +137,7 @@ void setup()
   sensor.softReset();  // Reset the SHT1x, in case the Arduino was reset during communication:
   
 // Initialize the Dallas OneWire Sensors
-  dTemps.begin();
+  dallasSensors.begin();
 
 
 //Sets up servos to be controlled. One output going to three servos.
@@ -224,8 +224,8 @@ listenForEthernetClients();          /// Listens for HTTP client requests
 void getSensorData() { // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
     // if there's a reading ready, read it:
-      dTemps.requestTemperatures();
-      tempDallas1 = dTemps.getTempC(dTemp1);
+      dallasSensors.requestTemperatures();
+      tempDallas1 = dallasSensors.getTempC(dTemp1);
       sensor.measure(tempSHT1x, rhSHT1x);          //SHT1x reading
       RTC.read(tm);                           //RTC Reading
       lastReadingTime = millis();
