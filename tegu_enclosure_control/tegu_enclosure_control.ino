@@ -350,13 +350,13 @@ void StrClear(char *str, char length)
         str[i] = 0;
     }
 }
-
 // searches for the string sfind in the string str
 // returns 1 if string found
 // returns 0 if string not found
-char StrContains(char *str, char *sfind)
+boolean StrContains(char *str, char *sfind)
 {
-    char found = 0;
+
+  char found = 0;
     char index = 0;
     char len;
 
