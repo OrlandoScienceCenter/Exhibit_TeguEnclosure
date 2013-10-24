@@ -154,7 +154,18 @@ hysDrift = 2;        // Number of degrees to drift over/under the setpoints
 **************************************************************************************************/
 void loop(){
   {
-    
+byte sysmode = 0;
+  
+  if (AUTO_ENABLE_PIN){
+    sysmode = 1;
+  }
+  else if (SERVICE_ENABLE_PIN){
+    sysmode = 2;
+  }
+  else{
+    sysmode = 0; 
+  }
+  
 // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
     // if there's a reading ready, read it:
@@ -205,7 +216,7 @@ void listenForEthernetClients() {
            client.print((dTemp.getTempCByIndex(0))*1.8+33);  
            client.print("F    ");
            client.println("<br />  Alarms - ");
-           client.print(checkTemp());
+           client.print(tempRegulation());
            client.println("<br />");  
            client.print("Time = ");
            client.print(tm.Hour);
@@ -303,7 +314,7 @@ digitalWrite(PUMP, LOW);
 digitalWrite(FAN, LOW);
 }
 
-boolean checkTemp(){
+boolean tempRegulation(){
  boolean cooling;
   if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
     cooling = 1;                                 // sets the return value to 1, indicating we're in a cooling stage
@@ -312,6 +323,7 @@ boolean checkTemp(){
   }  
   if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
     cooling = 0;                              // Indicate we're out of hysteresis condition
+    hysActive = 0;
     damperControl(1);                        //damper contro, turn the dampers closed for recirculate air
   }  
   return cooling;
