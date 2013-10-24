@@ -39,10 +39,10 @@ http://startingelectronics.com , Written by W.A. Smith
 // be necessary if the wires between the Arduino and the SHT1x are long:
 #define clockPulseWidth 1
 #define supplyVoltage sht1xalt::VOLTAGE_5V
-// If you want to report temperature units in Fahrenheit instead of Celcius, Change which line is commented/uncomented 
-//#define temperatureUnits sht1xalt::UNITS_CELCIUS
-#define temperatureUnits sht1xalt::UNITS_FAHRENHEIT
-sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temperatureUnits );
+// If you want to report tempSHT1xerature units in Fahrenheit instead of Celcius, Change which line is commented/uncomented 
+//#define tempSHT1xeratureUnits sht1xalt::UNITS_CELCIUS
+#define tempSHT1xeratureUnits sht1xalt::UNITS_FAHRENHEIT
+sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, tempSHT1xeratureUnits );
 
 
 
@@ -66,7 +66,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
 *                                  Dallas 1 Wire Sensor Settings                                 *
 **************************************************************************************************/
 #define ONE_WIRE_BUS A0               // Where is the data pin plugged into?
-  OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+  OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas tempSHT1xerature ICs)
   DallasTemperature dTemp(&oneWire);  // Pass our oneWire reference to Dallas Temperature. 
   DeviceAddress dTemp1;
   
@@ -88,16 +88,18 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
 //A5 SCL    I2C/TWI
 Servo damperServos;
 /*************************************************************************************************
-*                                       Global Variables                                         *
+*                                   Set Global Variables                                         *
 **************************************************************************************************/
 
   long lastReadingTime = 0;
-  float temp;
+  float tempSHT1x;
   float rh;
   tmElements_t tm;       
-
-  
-  
+  byte targetTemp;
+  byte targetRH;
+  byte hysDrift;
+  boolean hysActive;
+  const byte dampersClosed = 90;  
 /*************************************************************************************************
 *                                              SETUP                                             *
 **************************************************************************************************/
@@ -113,6 +115,7 @@ void setup()
   pinMode (AUTO_ENABLE_PIN, INPUT);
   pinMode (SERVICE_ENABLE_PIN, INPUT); 
   
+
   
 // Initialize the SD Card
   pinMode(10, OUTPUT);        // Temporarily Disable the Ethernet Chip to select the SD Card
@@ -135,7 +138,12 @@ damperServos.attach(6);
  // Starts ethernet and Server
   Ethernet.begin (mac, ip);            //Initialize Ethernet device
   server.begin();                      //start to listen for clients
- 
+  
+// Target Temperature ane RH Initial Setpoints
+targetTemp = 85;      // Degrees Farenheit
+//targetRH = 85;        // % Relative Humidity
+tempHys = 0;          // Sets hysteresis to off - allows function to operate
+hysDrift = 2;        // Number of degrees to drift over/under the setpoints
 }
 
 
@@ -149,9 +157,9 @@ void loop(){
 // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
     // if there's a reading ready, read it:
-      sensor.measure(temp, rh);          //SHT1x reading
+      sensor.measure(tempSHT1x, rh);          //SHT1x reading
       RTC.read(tm);                      //RTC Reading
-   lastReadingTime = millis();
+      lastReadingTime = millis();
   }
   }
   // listen for incoming Ethernet connections:
@@ -186,7 +194,7 @@ void listenForEthernetClients() {
           client.println("<html>");
           // print the current readings, in HTML format:
           client.print("SHT1x Temperature and Humidity ");
-          client.print(temp);
+          client.print(tempSHT1x);
           client.print("F    ");
           client.print(rh);
           client.print("%");
@@ -240,8 +248,8 @@ digitalWrite(PUMP, HIGH);
 // Fan On        
 digitalWrite(FAN, HIGH);
 
-// damperServos closed / controlled
-damperServos.write(90);    // Closed position
+//Temperature regulation
+checkTemp();                        // Checks the system Temperature and opens/closes dampers as necessary
 
 // Heat lamps on / controlled
 digitalWrite(MVL, HIGH);
@@ -290,14 +298,20 @@ digitalWrite(MVL, LOW);
 
 boolean checkTemp(){
  boolean a;
-  if (temp > 75){
-    a = 1;
-    Serial.println(a);
+  if (tempSHT1x > targetTemp + hysDrift){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift
+    a = 1;                                 // sets the return value to 1, indicating we're in a cooling stage
+    hysActive = 1;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
+    damperControl(0);                      // go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
   }
-  if (temp < 75){
+  if (tempSHT1x < targetTemp -   hysDrift) && (!hysActive){
     a = 0;
-    Serial.println(a);
+
   }  
   return a;
 }
 
+boolean damperControl(int state){
+  if (state == 1){
+    damperServos.write(dampersClosed);
+  }
+}
