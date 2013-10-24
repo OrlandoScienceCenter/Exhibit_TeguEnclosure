@@ -156,10 +156,10 @@ void loop(){
   {
 byte sysmode = 0;
   
-  if (AUTO_ENABLE_PIN){
+  if (digitalRead(AUTO_ENABLE_PIN)){
     sysmode = 1;
   }
-  else if (SERVICE_ENABLE_PIN){
+  else if (digitalRead(SERVICE_ENABLE_PIN)){
     sysmode = 2;
   }
   else{
