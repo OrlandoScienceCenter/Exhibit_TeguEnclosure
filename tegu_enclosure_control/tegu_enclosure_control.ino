@@ -10,6 +10,11 @@ Author:    MKing - hybridsix
 Some code examples and much help was derrived from the tutorial on 
 http://startingelectronics.com , Written by W.A. Smith
 
+A big thanks to darkmoonsinger for late night code reviews
+
+Lots of code snippits and ideas obtained through examples provided with libraries
+
+
 */
 
 /*************************************************************************************************
@@ -337,7 +342,7 @@ digitalWrite(PUMP, LOW);
 digitalWrite(FAN, HIGH);
 
 // damperServos Open
-damperServos.write(0);    // Open position
+damperControl(0);        // put dampers into open position
 
 // Heat lamps off
 digitalWrite(MVL, LOW);
