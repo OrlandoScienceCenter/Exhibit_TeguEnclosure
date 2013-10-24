@@ -24,8 +24,8 @@ Lots of code snippits and ideas obtained through examples provided with librarie
 #include <Wire.h>              // I2C Library
 #include <SPI.h>               // SPI Library 
 #include <Ethernet.h>          // Ethernet Library
-#include <DallasTemperature.h> // Dallas Temp Sensor Library
 #include <OneWire.h>           // One Wire Comms LIbrary 
+#include <DallasTemperature.h> // Dallas Temp Sensor Library
 //#include <SHT1x.h>             // Temp/Humidity Sensor Library // Old library - see sht1xalt.h
 #include <DS1307RTC.h>         // DS1307 Real Time Clock Library
 #include <Time.h>              // TIme library for easier workings with time and dates
@@ -72,8 +72,8 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
 **************************************************************************************************/
 #define ONE_WIRE_BUS A0               // Where is the data pin plugged into?
   OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas tempSHT1xerature ICs)
-  DallasTemperature dTemp(&oneWire);  // Pass our oneWire reference to Dallas Temperature. 
-  DeviceAddress dTemp1;
+  DallasTemperature dTemps(&oneWire);  // Pass our oneWire reference to Dallas Temperature. 
+  DeviceAddress dTemp1 = { 0x28, 0xA3, 0x27, 0x23, 0x5, 0x0, 0x0, 0x7F }; //28A327230500007F;
   
 
 /*************************************************************************************************
@@ -99,6 +99,7 @@ Servo damperServos;
   long lastReadingTime = 0;
   float tempSHT1x;
   float rhSHT1x;
+  float tempDallas1;
   tmElements_t tm;       
   byte targetTemp;
   byte targetRH;
@@ -136,7 +137,8 @@ void setup()
   sensor.softReset();  // Reset the SHT1x, in case the Arduino was reset during communication:
   
 // Initialize the Dallas OneWire Sensors
-  dTemp.begin();
+  dTemps.begin();
+
 
 //Sets up servos to be controlled. One output going to three servos.
   damperServos.attach(6); 
@@ -182,7 +184,7 @@ byte systemMode = 0;
 //
   switch (systemMode){
       case 0:
-         Serial.println("System Mode Off");
+//        Serial.println("System Mode Off");
          // Do the off stuff
          getSensorData();
          offMode();
@@ -190,13 +192,14 @@ byte systemMode = 0;
 
       case 1:
           // do the auto stuff
-          Serial.println("System Mode Auto");
+//          Serial.println("System Mode Auto");
             getSensorData();      // Pull all the sensor data. No returns, all values plugged into global vars
-     
-            if(isDay){            // Check Day/Night States, and do the appropriate on/offs of equipment     
+            if(isDay()){            // Check Day/Night States, and do the appropriate on/offs of equipment     
+              Serial.println("DayMode");
               dayMode();          // Day mode power settings 
               }
             else {
+              Serial.println("NightMode");
               nightMode();        // Night mode power settings 
               } 
             tempRegulation();     // Checks temp, opens/closes dampers as necessary
@@ -204,7 +207,7 @@ byte systemMode = 0;
          break;
 
       case 2:
-          Serial.println("System Mode Service");
+ //         Serial.println("System Mode Service");
           // do the service stuff
           getSensorData();
           serviceMode();
@@ -221,6 +224,8 @@ listenForEthernetClients();          /// Listens for HTTP client requests
 void getSensorData() { // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
     // if there's a reading ready, read it:
+      dTemps.requestTemperatures();
+      tempDallas1 = dTemps.getTempC(dTemp1);
       sensor.measure(tempSHT1x, rhSHT1x);          //SHT1x reading
       RTC.read(tm);                           //RTC Reading
       lastReadingTime = millis();
@@ -234,7 +239,9 @@ void getSensorData() { // check for a reading no more than once a second.
 *                                     Day/ Night mode check                                      *
 **************************************************************************************************/
 boolean isDay() { // is it day or night?
-   return ((dayStartTime <= tm.Hour) && (tm.Hour <= nightStartTime));
+   Serial.print("isDay  ");
+   Serial.println((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
+   return ((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
 }
 
 
@@ -273,7 +280,7 @@ void listenForEthernetClients() {
           client.println("<br />");  
     //
            client.print("Dallas OneWire Temp ");
-           client.print((dTemp.getTempCByIndex(0))*1.8+32);  
+           client.print(tempDallas1*1.8+32);  
            client.print("F    ");
            client.println("<br />  Vent Mode - ");
            client.print(ventMode);
@@ -375,22 +382,23 @@ digitalWrite(FAN, LOW);
 }
 
 void tempRegulation(){
-  Serial.println("Temp Regulation");
+/*  Serial.println("Temp Regulation");
   Serial.println(tempSHT1x);
   Serial.println(targetTemp);
   Serial.println(hysActive);
+ */
 boolean cooling = false;
   if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
     ventMode = true ;                                 // sets the return value to 1, indicating we're in a cooling stage
     hysActive = true;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
     damperControl(0);                      // go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
-    Serial.println("Cooling Active");
+  //  Serial.println("Cooling Active");
   }  
   if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
     ventMode = false ;                              // Indicate we're out of hysteresis condition
     hysActive = false;
     damperControl(1);                        //damper contro, turn the dampers closed for recirculate air
-  Serial.println("Recirculate Active");
+ // Serial.println("Recirculate Active");
   }  
   return;
 }
