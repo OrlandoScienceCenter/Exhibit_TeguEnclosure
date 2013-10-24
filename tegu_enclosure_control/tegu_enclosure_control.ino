@@ -62,7 +62,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
   byte mac[] = { 0x90, 0xA2, 0xDA, 0x0E, 0x40, 0x64, }; // Sets the Mac Address of the program to that of the device. Change these to real values
   IPAddress ip(10,1,1,100);                                // Sets the manual IP address of the device. Change to real values
   EthernetServer server(80);                          // Create Server at port 8088
-//File webFile;
+  File webFile;
   char HTTP_req[REQ_BUF_SZ] = {0}; // buffered HTTP request stored as null terminated string
   char req_index = 0;              // index into HTTP_req buffer
 
@@ -99,7 +99,7 @@ Servo damperServos;
   long lastReadingTime = 0;
   float tempSHT1x;
   float rhSHT1x;
-  float tempDallas1;
+  byte tempDallas1;
   tmElements_t tm;       
   byte targetTemp;
   byte targetRH;
@@ -141,10 +141,10 @@ void setup()
 
 
 //Sets up servos to be controlled. One output going to three servos.
-  damperServos.attach(6); 
+//  damperServos.attach(6); 
 
 // SERIAL
-  Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
+//  Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
  
  // Starts ethernet and Server
   Ethernet.begin (mac, ip);            //Initialize Ethernet device
@@ -195,11 +195,11 @@ byte systemMode = 0;
 //          Serial.println("System Mode Auto");
             getSensorData();      // Pull all the sensor data. No returns, all values plugged into global vars
             if(isDay()){            // Check Day/Night States, and do the appropriate on/offs of equipment     
-              Serial.println("DayMode");
+              //Serial.println("DayMode");
               dayMode();          // Day mode power settings 
               }
             else {
-              Serial.println("NightMode");
+             //Serial.println("NightMode");
               nightMode();        // Night mode power settings 
               } 
             tempRegulation();     // Checks temp, opens/closes dampers as necessary
@@ -239,8 +239,8 @@ void getSensorData() { // check for a reading no more than once a second.
 *                                     Day/ Night mode check                                      *
 **************************************************************************************************/
 boolean isDay() { // is it day or night?
-   Serial.print("isDay  ");
-   Serial.println((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
+  // Serial.print("isDay  ");
+  // Serial.println((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
    return ((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
 }
 
@@ -251,7 +251,136 @@ boolean isDay() { // is it day or night?
 *                              Ethernet/ HTTP Request Processing                                 *
 **************************************************************************************************/
 void listenForEthernetClients() {
-  // listen for incoming clients
+    EthernetClient client = server.available();  // try to get client
+
+    if (client) {  // got client?
+        boolean currentLineIsBlank = true;
+        while (client.connected()) {
+            if (client.available()) {   // client data available to read
+                char c = client.read(); // read 1 byte (character) from client
+                // buffer first part of HTTP request in HTTP_req array (string)
+                // leave last element in array as 0 to null terminate string (REQ_BUF_SZ - 1)
+                if (req_index < (REQ_BUF_SZ - 1)) {
+                    HTTP_req[req_index] = c;          // save HTTP request character
+                    req_index++;
+                }
+                // last line of client request is blank and ends with \n
+                // respond to client only after last line received
+                if (c == '\n' && currentLineIsBlank) {
+                    // send a standard http response header
+                    client.println("HTTP/1.1 200 OK");
+                    // remainder of header follows below, depending on if
+                    // web page or XML page is requested
+                    // Ajax request - send XML file
+                    if (StrContains(HTTP_req, "ajax_inputs")) {
+                        // send rest of HTTP header
+                        client.println("Content-Type: text/xml");
+                        client.println("Connection: keep-alive");
+                        client.println();
+                        // send XML file containing input states
+                        XML_response(client);
+                    }
+                    else {  // web page request
+                        // send rest of HTTP header
+                        client.println("Content-Type: text/html");
+                        client.println("Connection: keep-alive");
+                        client.println();
+                        // send web page
+                        webFile = SD.open("index.htm");        // open web page file
+                        if (webFile) {
+                            while(webFile.available()) {
+                                client.write(webFile.read()); // send web page to client
+                            }
+                            webFile.close();
+                        }
+                    }
+                    // reset buffer index and all buffer elements to 0
+                    req_index = 0;
+                    StrClear(HTTP_req, REQ_BUF_SZ);
+                    break;
+                }
+                // every line of text received from the client ends with \r\n
+                if (c == '\n') {
+                    // last character on line of received text
+                    // starting new line with next character read
+                    currentLineIsBlank = true;
+                } 
+                else if (c != '\r') {
+                    // a text character was received from client
+                    currentLineIsBlank = false;
+                }
+            } // end if (client.available())
+        } // end while (client.connected())
+        delay(1);      // give the web browser time to receive the data
+        client.stop(); // close the connection
+    } // end if (client)
+}
+
+// send the XML file with switch statuses and analog value
+void XML_response(EthernetClient cl)
+{
+    cl.print("<?xml version = \"1.0\" ?>");
+    cl.print("<inputs>");
+    cl.print("<button1>");
+    if (digitalRead(7)) {
+        cl.print("ON");
+    }
+    else {
+        cl.print("OFF");
+    }
+    cl.print("</button1>");
+    cl.print("<button2>");
+    if (digitalRead(8)) {
+        cl.print("ON");
+    }
+    else {
+        cl.print("OFF");
+    }
+    cl.print("</button2>");
+    cl.print("<analog1>");
+//    cl.print(anaogvalue);
+    cl.print("</analog1>");
+    cl.print("</inputs>");
+}
+
+// sets every element of str to 0 (clears array)
+void StrClear(char *str, char length)
+{
+    for (int i = 0; i < length; i++) {
+        str[i] = 0;
+    }
+}
+
+// searches for the string sfind in the string str
+// returns 1 if string found
+// returns 0 if string not found
+char StrContains(char *str, char *sfind)
+{
+    char found = 0;
+    char index = 0;
+    char len;
+
+    len = strlen(str);
+    
+    if (strlen(sfind) > len) {
+        return 0;
+    }
+    while (index < len) {
+        if (str[index] == sfind[found]) {
+            found++;
+            if (strlen(sfind) == found) {
+                return 1;
+            }
+        }
+        else {
+            found = 0;
+        }
+        index++;
+    }
+
+    return 0;
+}
+  /*  // listen for incoming clients
  EthernetClient client = server.available();
   if (client) {
     Serial.println("Got a client");
@@ -311,7 +440,7 @@ void listenForEthernetClients() {
 } 
 
 
-
+*/
 /*************************************************************************************************
 *                                         Mode Definitions                                       *
 **************************************************************************************************/
