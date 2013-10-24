@@ -45,9 +45,9 @@ Lots of code snippits and ideas obtained through examples provided with librarie
 #define clockPulseWidth 1
 #define supplyVoltage sht1xalt::VOLTAGE_5V
 // If you want to report tempSHT1xerature units in Fahrenheit instead of Celcius, Change which line is commented/uncomented 
-//#define tempSHT1xeratureUnits sht1xalt::UNITS_CELCIUS
-#define tempSHT1xeratureUnits sht1xalt::UNITS_FAHRENHEIT
-sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, tempSHT1xeratureUnits );
+//#define temperatureUnits sht1xalt::UNITS_CELCIUS
+#define temperatureUnits sht1xalt::UNITS_FAHRENHEIT
+sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temperatureUnits );
 
 
 
@@ -98,7 +98,7 @@ Servo damperServos;
 
   long lastReadingTime = 0;
   float tempSHT1x;
-  float rh;
+  float rhSHT1x;
   tmElements_t tm;       
   byte targetTemp;
   byte targetRH;
@@ -106,6 +106,7 @@ Servo damperServos;
   boolean hysActive;
   byte dayStartTime;
   byte nightStartTime;
+  boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling
   
   
 /*************************************************************************************************
@@ -135,10 +136,10 @@ void setup()
   sensor.softReset();  // Reset the SHT1x, in case the Arduino was reset during communication:
   
 // Initialize the Dallas OneWire Sensors
-dTemp.begin();
+  dTemp.begin();
 
 //Sets up servos to be controlled. One output going to three servos.
-damperServos.attach(6); 
+  damperServos.attach(6); 
 
 // SERIAL
   Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
@@ -165,7 +166,7 @@ nightStartTime = 14;
 *                                              LOOP                                              *
 **************************************************************************************************/
 void loop(){
-
+delay (100);
 byte systemMode = 0;
   
    if (digitalRead(AUTO_ENABLE_PIN)){
@@ -177,9 +178,11 @@ byte systemMode = 0;
     else{
       systemMode = 0; 
     }
-
+//
+//
   switch (systemMode){
       case 0:
+         Serial.println("System Mode Off");
          // Do the off stuff
          getSensorData();
          offMode();
@@ -187,6 +190,7 @@ byte systemMode = 0;
 
       case 1:
           // do the auto stuff
+          Serial.println("System Mode Auto");
             getSensorData();      // Pull all the sensor data. No returns, all values plugged into global vars
      
             if(isDay){            // Check Day/Night States, and do the appropriate on/offs of equipment     
@@ -200,6 +204,7 @@ byte systemMode = 0;
          break;
 
       case 2:
+          Serial.println("System Mode Service");
           // do the service stuff
           getSensorData();
           serviceMode();
@@ -216,7 +221,7 @@ listenForEthernetClients();          /// Listens for HTTP client requests
 void getSensorData() { // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
     // if there's a reading ready, read it:
-      sensor.measure(tempSHT1x, rh);          //SHT1x reading
+      sensor.measure(tempSHT1x, rhSHT1x);          //SHT1x reading
       RTC.read(tm);                           //RTC Reading
       lastReadingTime = millis();
   }
@@ -263,15 +268,15 @@ void listenForEthernetClients() {
           client.print("SHT1x Temperature and Humidity ");
           client.print(tempSHT1x);
           client.print("F    ");
-          client.print(rh);
+          client.print(rhSHT1x);
           client.print("%");
           client.println("<br />");  
     //
            client.print("Dallas OneWire Temp ");
-           client.print((dTemp.getTempCByIndex(0))*1.8+33);  
+           client.print((dTemp.getTempCByIndex(0))*1.8+32);  
            client.print("F    ");
-           client.println("<br />  Alarms - ");
-           client.print(tempRegulation());
+           client.println("<br />  Vent Mode - ");
+           client.print(ventMode);
            client.println("<br />");  
            client.print("Time = ");
            client.print(tm.Hour);
@@ -369,19 +374,25 @@ digitalWrite(PUMP, LOW);
 digitalWrite(FAN, LOW);
 }
 
-boolean tempRegulation(){
- boolean cooling;
+void tempRegulation(){
+  Serial.println("Temp Regulation");
+  Serial.println(tempSHT1x);
+  Serial.println(targetTemp);
+  Serial.println(hysActive);
+boolean cooling = false;
   if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
-    cooling = true ;                                 // sets the return value to 1, indicating we're in a cooling stage
+    ventMode = true ;                                 // sets the return value to 1, indicating we're in a cooling stage
     hysActive = true;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
     damperControl(0);                      // go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
+    Serial.println("Cooling Active");
   }  
   if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
-    cooling = false ;                              // Indicate we're out of hysteresis condition
+    ventMode = false ;                              // Indicate we're out of hysteresis condition
     hysActive = false;
     damperControl(1);                        //damper contro, turn the dampers closed for recirculate air
+  Serial.println("Recirculate Active");
   }  
-  return cooling;
+  return;
 }
 
 boolean damperControl(int damperState){
