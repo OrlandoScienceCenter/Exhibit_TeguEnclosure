@@ -170,6 +170,7 @@ byte systemMode = 0;
       case 0:
          // Do the off stuff
          getSensorData();
+         offMode();
          break;
 
       case 1:
@@ -189,6 +190,7 @@ byte systemMode = 0;
       case 2:
           // do the service stuff
           getSensorData();
+          serviceMode();
           break;
       }
 
@@ -214,7 +216,7 @@ void getSensorData() { // check for a reading no more than once a second.
 /*************************************************************************************************
 *                                     Day/ Night mode check                                      *
 **************************************************************************************************/
-void isDay() { // is it day or night?
+boolean isDay() { // is it day or night?
 
 }
 
