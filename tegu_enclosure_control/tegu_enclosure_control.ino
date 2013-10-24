@@ -104,6 +104,8 @@ Servo damperServos;
   byte targetRH;
   byte hysDrift;
   boolean hysActive;
+  byte dayStartTime;
+  byte nightStartTime;
   
   
 /*************************************************************************************************
@@ -150,6 +152,11 @@ targetTemp = 85;      // Degrees Farenheit
 //targetRH = 85;        // % Relative Humidity
 hysActive = 0;          // Sets hysteresis to off - allows function to operate
 hysDrift = 2;        // Number of degrees to drift over/under the setpoints
+
+
+// Time Setpoints
+dayStartTime = 8;
+nightStartTime = 14;
 }
 
 
@@ -222,7 +229,14 @@ void getSensorData() { // check for a reading no more than once a second.
 *                                     Day/ Night mode check                                      *
 **************************************************************************************************/
 boolean isDay() { // is it day or night?
-
+  boolean day;
+  if (dayStartTime >= tm.Hour <= nightStartTime){
+      day = true;
+      }
+      else{
+      day = false;
+      }
+return (day);
 }
 
 
