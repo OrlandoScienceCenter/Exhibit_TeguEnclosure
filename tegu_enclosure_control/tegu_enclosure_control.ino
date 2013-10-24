@@ -229,14 +229,7 @@ void getSensorData() { // check for a reading no more than once a second.
 *                                     Day/ Night mode check                                      *
 **************************************************************************************************/
 boolean isDay() { // is it day or night?
-  boolean day;
-  if (dayStartTime >= tm.Hour <= nightStartTime){
-      day = true;
-      }
-      else{
-      day = false;
-      }
-return (day);
+   return ((dayStartTime <= tm.Hour) && (tm.Hour <= nightStartTime));
 }
 
 
