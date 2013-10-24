@@ -153,32 +153,73 @@ hysDrift = 2;        // Number of degrees to drift over/under the setpoints
 *                                              LOOP                                              *
 **************************************************************************************************/
 void loop(){
-  {
-byte sysmode = 0;
+
+byte systemMode = 0;
   
-  if (digitalRead(AUTO_ENABLE_PIN)){
-    sysmode = 1;
-  }
-  else if (digitalRead(SERVICE_ENABLE_PIN)){
-    sysmode = 2;
-  }
-  else{
-    sysmode = 0; 
-  }
-  
-// check for a reading no more than once a second.
+   if (digitalRead(AUTO_ENABLE_PIN)){
+      systemMode = 1;
+    }
+    else if (digitalRead(SERVICE_ENABLE_PIN)){
+      systemMode = 2;
+    }
+    else{
+      systemMode = 0; 
+    }
+
+  switch (systemMode){
+      case 0:
+         // Do the off stuff
+         getSensorData();
+         break;
+
+      case 1:
+          // do the auto stuff
+            getSensorData();      // Pull all the sensor data. No returns, all values plugged into global vars
+     
+            if(isDay){            // Check Day/Night States, and do the appropriate on/offs of equipment     
+              dayMode();          // Day mode power settings 
+              }
+            else {
+              nightMode();        // Night mode power settings 
+              } 
+            tempRegulation();     // Checks temp, opens/closes dampers as necessary
+            
+         break;
+
+      case 2:
+          // do the service stuff
+          getSensorData();
+          break;
+      }
+
+listenForEthernetClients();          /// Listens for HTTP client requests
+}
+
+
+/*************************************************************************************************
+*                                        Sensor Data Grab                                        *
+**************************************************************************************************/
+void getSensorData() { // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
     // if there's a reading ready, read it:
       sensor.measure(tempSHT1x, rh);          //SHT1x reading
-      RTC.read(tm);                      //RTC Reading
+      RTC.read(tm);                           //RTC Reading
       lastReadingTime = millis();
   }
-  }
-  // listen for incoming Ethernet connections:
-  // Case statement here?
-  listenForEthernetClients();
-  dayMode();
+} 
+
+
+
+
+/*************************************************************************************************
+*                                     Day/ Night mode check                                      *
+**************************************************************************************************/
+void isDay() { // is it day or night?
+
 }
+
+
+
 
 /*************************************************************************************************
 *                              Ethernet/ HTTP Request Processing                                 *
@@ -317,13 +358,13 @@ digitalWrite(FAN, LOW);
 boolean tempRegulation(){
  boolean cooling;
   if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
-    cooling = 1;                                 // sets the return value to 1, indicating we're in a cooling stage
-    hysActive = 1;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
+    cooling = true ;                                 // sets the return value to 1, indicating we're in a cooling stage
+    hysActive = true;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
     damperControl(0);                      // go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
   }  
   if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
-    cooling = 0;                              // Indicate we're out of hysteresis condition
-    hysActive = 0;
+    cooling = false ;                              // Indicate we're out of hysteresis condition
+    hysActive = false;
     damperControl(1);                        //damper contro, turn the dampers closed for recirculate air
   }  
   return cooling;
