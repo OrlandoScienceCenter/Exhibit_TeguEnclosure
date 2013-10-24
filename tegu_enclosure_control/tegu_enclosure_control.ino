@@ -99,7 +99,8 @@ Servo damperServos;
   byte targetRH;
   byte hysDrift;
   boolean hysActive;
-  const byte dampersClosed = 90;  
+  
+  
 /*************************************************************************************************
 *                                              SETUP                                             *
 **************************************************************************************************/
@@ -142,7 +143,7 @@ damperServos.attach(6);
 // Target Temperature ane RH Initial Setpoints
 targetTemp = 85;      // Degrees Farenheit
 //targetRH = 85;        // % Relative Humidity
-tempHys = 0;          // Sets hysteresis to off - allows function to operate
+hysActive = 0;          // Sets hysteresis to off - allows function to operate
 hysDrift = 2;        // Number of degrees to drift over/under the setpoints
 }
 
@@ -173,7 +174,7 @@ void loop(){
 **************************************************************************************************/
 void listenForEthernetClients() {
   // listen for incoming clients
-  EthernetClient client = server.available();
+ EthernetClient client = server.available();
   if (client) {
     Serial.println("Got a client");
     // an http request ends with a blank line
@@ -228,7 +229,7 @@ void listenForEthernetClients() {
     delay(1);
     // close the connection:
     client.stop();
-  }
+  } 
 } 
 
 
@@ -248,12 +249,8 @@ digitalWrite(PUMP, HIGH);
 // Fan On        
 digitalWrite(FAN, HIGH);
 
-//Temperature regulation
-checkTemp();                        // Checks the system Temperature and opens/closes dampers as necessary
-
 // Heat lamps on / controlled
 digitalWrite(MVL, HIGH);
-
 }
 
 void nightMode(){
@@ -267,9 +264,6 @@ digitalWrite(PUMP, LOW);
 
 // Fan on /low?
 digitalWrite(FAN, LOW);
-
-// damperServos closed / controlled
-damperServos.write(90);    // Closed position
 
 // Heat Lamps off
 digitalWrite(MVL, LOW);
@@ -296,22 +290,39 @@ digitalWrite(MVL, LOW);
 
 }
 
+void offMode(){
+// This will determine what is on/off in OFF mode. 
+// T5 Lights at half power
+digitalWrite(T5_1, LOW);
+digitalWrite(T5_2, LOW);
+
+// Waterfall Off
+digitalWrite(PUMP, LOW);
+
+// Fan on 
+digitalWrite(FAN, LOW);
+}
+
 boolean checkTemp(){
- boolean a;
-  if (tempSHT1x > targetTemp + hysDrift){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift
-    a = 1;                                 // sets the return value to 1, indicating we're in a cooling stage
+ boolean cooling;
+  if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
+    cooling = 1;                                 // sets the return value to 1, indicating we're in a cooling stage
     hysActive = 1;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
     damperControl(0);                      // go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
-  }
-  if (tempSHT1x < targetTemp -   hysDrift) && (!hysActive){
-    a = 0;
-
   }  
-  return a;
+  if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
+    cooling = 0;                              // Indicate we're out of hysteresis condition
+    damperControl(1);                        //damper contro, turn the dampers closed for recirculate air
+  }  
+  return cooling;
 }
 
-boolean damperControl(int state){
-  if (state == 1){
-    damperServos.write(dampersClosed);
+boolean damperControl(int damperState){
+  if (damperState){
+    damperServos.write(90);
+  }
+  else {
+    damperServos.write(0);
   }
 }
+
