@@ -25,12 +25,13 @@ Lots of code snippits and ideas obtained through examples provided with librarie
 #include <SPI.h>               // SPI Library 
 #include <Ethernet.h>          // Ethernet Library
 #include <OneWire.h>           // One Wire Comms LIbrary 
-#include <DallasTemperature.h> // Dallas Temp Sensor Library
+
+#include <DallasTemperatureLite.h> // Dallas Temp Sensor Library
 //#include <SHT1x.h>             // Temp/Humidity Sensor Library // Old library - see sht1xalt.h
 #include <DS1307RTC.h>         // DS1307 Real Time Clock Library
 #include <Time.h>              // TIme library for easier workings with time and dates
 #include <SD.h>                // SD Card Library
-#include <Servo.h>             // Servo Library  
+#include <ServoLite.h>             // Servo Library  
 #include <sht1xalt.h>          // New Library for SHT1x Sensor - works much better. 
 
 /*************************************************************************************************
@@ -108,8 +109,12 @@ Servo damperServos;
   byte dayStartTime;
   byte nightStartTime;
   boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling
-  
-  
+/*
+  #define eTargetTemp 1  // EEPROM Defines - TBD
+  #define eTargetRH   2
+  #define eDayStartTime 3
+  #define eNightStartTime 4  
+*/  
 /*************************************************************************************************
 *                                              SETUP                                             *
 **************************************************************************************************/
@@ -152,7 +157,7 @@ void setup()
   
 // Target Temperature ane RH Initial Setpoints
 targetTemp = 85;      // Degrees Farenheit
-//targetRH = 85;        // % Relative Humidity
+targetRH = 85;        // % Relative Humidity
 hysActive = 0;          // Sets hysteresis to off - allows function to operate
 hysDrift = 2;        // Number of degrees to drift over/under the setpoints
 
@@ -169,31 +174,12 @@ nightStartTime = 14;
 **************************************************************************************************/
 void loop(){
 delay (100);
-byte systemMode = 0;
+byte systemMode;
   
    if (digitalRead(AUTO_ENABLE_PIN)){
       systemMode = 1;
-    }
-    else if (digitalRead(SERVICE_ENABLE_PIN)){
-      systemMode = 2;
-    }
-    else{
-      systemMode = 0; 
-    }
-//
-//
-  switch (systemMode){
-      case 0:
-//        Serial.println("System Mode Off");
-         // Do the off stuff
-         getSensorData();
-         offMode();
-         break;
-
-      case 1:
-          // do the auto stuff
-//          Serial.println("System Mode Auto");
-            getSensorData();      // Pull all the sensor data. No returns, all values plugged into global vars
+        getSensorData();      // Pull all the sensor data. No returns, all values plugged into global vars
+        tempRegulation();     // Checks temp, opens/closes dampers as necessary
             if(isDay()){            // Check Day/Night States, and do the appropriate on/offs of equipment     
               //Serial.println("DayMode");
               dayMode();          // Day mode power settings 
@@ -202,17 +188,17 @@ byte systemMode = 0;
              //Serial.println("NightMode");
               nightMode();        // Night mode power settings 
               } 
-            tempRegulation();     // Checks temp, opens/closes dampers as necessary
-            
-         break;
-
-      case 2:
- //         Serial.println("System Mode Service");
-          // do the service stuff
-          getSensorData();
-          serviceMode();
-          break;
-      }
+    }
+    else if (digitalRead(SERVICE_ENABLE_PIN)){
+      systemMode = 2;
+        getSensorData();
+        serviceMode();
+    }
+    else{
+      systemMode = 0; 
+         getSensorData();
+         offMode();
+    }
 
 listenForEthernetClients();          /// Listens for HTTP client requests
 }
@@ -273,7 +259,8 @@ void listenForEthernetClients() {
                     // web page or XML page is requested
                     // Ajax request - send XML file
                     if (StrContains(HTTP_req, "ajax_inputs")) {
-                        // send rest of HTTP header
+
+                      // send rest of HTTP header
                         client.println("Content-Type: text/xml");
                         client.println("Connection: keep-alive");
                         client.println();
@@ -343,19 +330,19 @@ void XML_response(EthernetClient cl)
     cl.print("</inputs>");
 }
 
-// sets every element of str to 0 (clears array)
-void StrClear(char *str, char length)
+
+void StrClear(char *str, char length) // sets every element of str to 0 (clears array)
 {
     for (int i = 0; i < length; i++) {
         str[i] = 0;
     }
 }
-// searches for the string sfind in the string str
+
 // returns 1 if string found
 // returns 0 if string not found
-boolean StrContains(char *str, char *sfind)
-{
-
+boolean StrContains(char *str, char *sfind)  // searches for the string sfind in the string str
+{                                            // returns 1 if string found
+                                             // returns 0 if string not found
   char found = 0;
     char index = 0;
     char len;
@@ -380,6 +367,8 @@ boolean StrContains(char *str, char *sfind)
 
     return 0;
 }
+
+
   /*  // listen for incoming clients
  EthernetClient client = server.available();
   if (client) {
