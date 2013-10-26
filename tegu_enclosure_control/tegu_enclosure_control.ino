@@ -26,12 +26,11 @@ Lots of code snippits and ideas obtained through examples provided with librarie
 #include <Ethernet.h>          // Ethernet Library
 #include <OneWireLite.h>           // One Wire Comms LIbrary 
 #include <DallasTemperatureLite.h> // Dallas Temp Sensor Library
-//#include <SHT1x.h>             // Temp/Humidity Sensor Library // Old library - see sht1xalt.h
 #include <DS1307RTC.h>         // DS1307 Real Time Clock Library
 #include <TimeLite.h>              // TIme library for easier workings with time and dates
 #include <SD.h>                // SD Card Library
 #include <ServoLite.h>             // Servo Library  
-#include <sht1xalt.h>          // New Library for SHT1x Sensor - works much better. 
+#include <sht1xaltLite.h>          // New Library for SHT1x Sensor - works much better. 
 
 /*************************************************************************************************
 *                                      SHT1x Settings                                            *
