@@ -3,7 +3,7 @@
     <head>
         <title>Arduino SD Card Web Page using Ajax with XML</title>
         <script>
-        function GetArduinoInputs()
+        function getArduinoData()
         {
             nocache = "&nocache=" + Math.random() * 1000000;
             var request = new XMLHttpRequest();
@@ -20,7 +20,7 @@
                             document.getElementById("input3").innerHTML =
                                 this.responseXML.getElementsByTagName('sensor')[2].childNodes[0].nodeValue;	
 			    //
-			    // Service Mode Set
+			// Service Mode Set
 			if (this.responseXML.getElementsByTagName('mode')[0].childNodes[0].nodeValue == "0")
 				{
 				document.getElementById("system_mode").innerHTML = "Off";
@@ -33,13 +33,83 @@
 				{	
 				document.getElementById("system_mode").innerHTML = "Service"; 
 				}	            
+			// check day or night
+			if (this.responseXML.getElementsByTagName('mode')[1].childNodes[0].nodeValue == "1")
+				{
+				document.getElementById("isDay").innerHTML = "Day";
+				}
+			else if (this.responseXML.getElementsByTagName('mode')[1].childNodes[0].nodeValue == "0")
+				{	
+				document.getElementById("isDay").innerHTML = "Night";
+        	       	        }	
+			// get current time
+			document.getElementById("time").innerHTML =
+                                this.responseXML.getElementsByTagName('time')[0].childNodes[0].nodeValue;
+
+			// read the output states
+			//T5 Lamp 1
+			if (this.responseXML.getElementsByTagName('out')[0].childNodes[0].nodeValue == "0")
+				{
+				document.getElementById("T5_1").innerHTML = "Off";
+				}
+			else if (this.responseXML.getElementsByTagName('out')[0].childNodes[0].nodeValue == "1")
+				{	
+				document.getElementById("T5_1").innerHTML = "On";
+        	       	        }	
+			// T5 Lamp 2
+			if (this.responseXML.getElementsByTagName('out')[1].childNodes[0].nodeValue == "0")
+				{
+				document.getElementById("T5_2").innerHTML = "Off";
+				}
+			else if (this.responseXML.getElementsByTagName('out')[1].childNodes[0].nodeValue == "1")
+				{	
+				document.getElementById("T5_2").innerHTML = "On";
+        	       	        }
+			// Mercury Vapor Lamps
+			if (this.responseXML.getElementsByTagName('out')[2].childNodes[0].nodeValue == "0")
+				{
+				document.getElementById("MVL").innerHTML = "Off";
+				}
+			else if (this.responseXML.getElementsByTagName('out')[2].childNodes[0].nodeValue == "1")
+				{	
+				document.getElementById("MVL").innerHTML = "On";
+        	       	        }
+			// Ventilation Fan
+			if (this.responseXML.getElementsByTagName('out')[3].childNodes[0].nodeValue == "0")
+				{
+				document.getElementById("FAN").innerHTML = "Off";
+				}
+			else if (this.responseXML.getElementsByTagName('out')[3].childNodes[0].nodeValue == "1")
+				{	
+				document.getElementById("FAN").innerHTML = "On";
+        	       	        }
+			// Waterfall Pump
+			if (this.responseXML.getElementsByTagName('out')[4].childNodes[0].nodeValue == "0")
+				{
+				document.getElementById("PUMP").innerHTML = "Off";
+				}
+			else if (this.responseXML.getElementsByTagName('out')[4].childNodes[0].nodeValue == "1")
+				{	
+				document.getElementById("PUMP").innerHTML = "On";
+        	       	        }
+		///////////////////////////////////
+			// Get Day and Night Values
+		        document.getElementById("dayStartTime").innerHTML =
+                                this.responseXML.getElementsByTagName('set')[0].childNodes[0].nodeValue;
+
+		        document.getElementById("nightStartTime").innerHTML =
+                                this.responseXML.getElementsByTagName('set')[1].childNodes[0].nodeValue;
+
+
+
+
 			    }
        		       }
 		}
 	}
             request.open("GET", "ajax_inputs" + nocache, true);
             request.send(null);
-            setTimeout('GetArduinoInputs()', 1000);		
+            setTimeout('getArduinoData()', 1000);		
         	}
     </script>
     </head>
@@ -72,7 +142,7 @@
 	</style>
 
     </head>
-    <body onload="GetArduinoInputs()">
+    <body onload="getArduinoData()">
         <h1>Teddy the Tegu - Control Panel</h1>
         <div class="IO_box">
 			<h2>Sensor Values</h2>
@@ -83,20 +153,28 @@
 		</div>
 		<div class="IO_box">
 			<h2>System Mode</h2>
-			<p>System <span id="system_mode">......</span></p>
+			<p>System -&nbsp;<span id="system_mode">......</span></p>
+			<p>Day/Night -&nbsp;<span id="isDay">.....</span></p>
+			<p>Time -&nbsp;&nbsp;&nbsp;<span id="time">.....</span></p>
 
 		</div>
 		<div class="IO_box">
-			<h2>LEDs Using Checkboxes</h2>
-			<form id="check_LEDs" name="LED_form">
+			<h2>System Outputs</h2>
+			<p>T5 Light 1 -&nbsp;&nbsp;<span id="T5_1">...</span></p>
+			<p>T5 Light 2 -&nbsp;&nbsp;<span id="T5_2">...</span></p>
+			<p>MV Lights  -&nbsp;&nbsp;<span id="MVL">...</span></p>
+			<p>Fan Status -&nbsp;&nbsp;<span id="FAN">...</span></p>
+			<p>Pump Status -&nbsp;<span id="PUMP">...</span></p>
+			
 
-			</form>
 		</div>
 		<div class="IO_box">
-			<h2>LEDs Using Buttons</h2>
-			<button type="button" id="LED3" onclick="GetButton1()">LED 3 is OFF (D8)</button><br /><br />
-			<button type="button" id="LED4" onclick="GetButton2()">LED 4 is OFF (D9)</button><br /><br />
-			<p class="small_text">D10 to D13 used by Ethernet shield</p>
+			<h2>System Settings</h2>
+			<form id="systemSettings" name="settingsForm">
+				<input type="number" name="dayStart" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
+				<input type="number" name="nightStart" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
+				<input type="submit" value="Update Settings">
+			</form>			
 		</div>
     </body>
 </html>
