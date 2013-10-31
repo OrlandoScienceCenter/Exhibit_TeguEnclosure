@@ -25,7 +25,7 @@
 				{
 				document.getElementById("system_mode").innerHTML = "Off";
 				}
-			else (if this.responseXML.getElementsByTagName('mode')[0].childNodes[0].nodeValue == "1")
+			else if (this.responseXML.getElementsByTagName('mode')[0].childNodes[0].nodeValue == "1")
 				{	
 				document.getElementById("system_mode").innerHTML = "Auto";
         	       	        }
