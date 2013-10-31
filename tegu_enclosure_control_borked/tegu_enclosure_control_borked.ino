@@ -70,10 +70,11 @@ char req_index = 0;              // Index into HTTP_req buffer
  *                                  Dallas 1 Wire Sensor Settings                                 *
  **************************************************************************************************/
 #define ONE_WIRE_BUS A0               // Where is the data pin plugged into?
-#define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
 OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices 
-DallasTemperature dSensors(&oneWire);
-DeviceAddress dThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//28A327230500007F; // Device address
+// (not just Maxim/Dallas tempSHT1xerature ICs) [[J]]: Do you have any others? Else, superfluous
+DallasTemperature dallasSensors(&oneWire);  // Pass our oneWire reference to Dallas Temperature. 
+DeviceAddress dTemp1 = { 
+  0x28, 0xA3, 0x27, 0x23, 0x5, 0x0, 0x0, 0x7F }; //28A327230500007F;
 
 
 /*************************************************************************************************
@@ -104,7 +105,7 @@ Servo damperServos;
 #define ON_STATE 1
 #define SERVICE_STATE 2
 
-#define INDEX_FILENAME "index3.htm"
+#define INDEX_FILENAME "index.htm"
 
 #define DAMPERS_OPEN 0
 #define DAMPERS_CLOSED 90
@@ -112,7 +113,7 @@ Servo damperServos;
 long lastReadingTime = 0;
 float tempSHT1x;
 float rhSHT1x;
-float tempDallas1;
+byte tempDallas1;
 tmElements_t tm; //[[J]]: Explanatory comment?
 byte targetTemp;
 byte targetRH;
@@ -121,6 +122,8 @@ boolean hysActive;
 byte dayStartTime;  //[[J]]: Might be worth defining default here
 byte nightStartTime;
 boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling [[J]]: Make this a byte, to match use?
+byte systemMode;
+
 /*
   #define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
  #define eTargetRH   2
@@ -136,7 +139,7 @@ int main(void) {
    **************************************************************************************************/
   init();
   {
-
+    Serial.begin(9600);     
     //Set pin modes
     pinMode (T5_1, OUTPUT);
     pinMode (T5_2, OUTPUT);
@@ -156,14 +159,13 @@ int main(void) {
     sensor.softReset();  // Reset the SHT1x, in case the Arduino was reset during communication:
 
     // Initialize the Dallas OneWire Sensors
-    dSensors.begin();
-    dSensors.setResolution(dThermometer, TEMPERATURE_PRECISION);
-  
+    dallasSensors.begin();
+
     //Sets up servos to be controlled. One output going to three servos.
-    damperServos.attach(6); 
+    //  damperServos.attach(6); 
 
     // SERIAL
-      Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
+ //   Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
     // [[J]]: Just as an aside, you can leave the serial commands and surround them with #if/#endif
 
     // Starts ethernet and Server
@@ -187,7 +189,6 @@ int main(void) {
   //void loop(){
   while (1) {
     delay (100);
-    byte systemMode;
 
     //[[J]]: This saved 8 bytes. Not a lot, but something. Unless there's a reason have it in each branch.
     getSensorData(); // Pull all the sensor data. No returns, all values plugged into global vars
@@ -219,9 +220,9 @@ int main(void) {
  **************************************************************************************************/
 void getSensorData() { // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
-//
-    dSensors.requestTemperatures();            // Send the Command to get the temperatures
-    tempDallas1 = dSensors.getTempF(dThermometer);  // Request temperature back in Farenheit (easy to change to celcius..)
+    // if there's a reading ready, read it:
+    dallasSensors.requestTemperatures();
+    tempDallas1 = dallasSensors.getTempC(dTemp1);
     sensor.measure(tempSHT1x, rhSHT1x);          //SHT1x reading
     RTC.read(tm);                           //RTC Reading
     lastReadingTime = millis();
@@ -274,7 +275,7 @@ void listenForEthernetClients() {
             client.println("Content-Type: text/xml");
             client.println("Connection: keep-alive"); 
             client.println();
-            setEnviroControls();
+           // setEnviroControls();
             // send XML file containing input states
             XML_response(client);
           } else {  // web page request
@@ -287,8 +288,12 @@ void listenForEthernetClients() {
             if (webFile) {
               while(webFile.available()) {
                 client.write(webFile.read()); // send web page to client
+                Serial.println("index sent");
               }
               webFile.close();
+            }
+            else{
+              Serial.println("Webfile not found");
             }
           }
           // reset buffer index and all buffer elements to 0
@@ -312,38 +317,39 @@ void listenForEthernetClients() {
     client.stop(); // close the connection
   } // end if (client)
 }
-/*************************************************************************************************
- *                                      XML Response Generator                                   *
- *************************************************************************************************/
 
-// send the XML file with switch statuses and analog value
+
+/*************************************************************************************************
+ *                                     XML Response Handler                                      *
+ *************************************************************************************************/
 void XML_response(EthernetClient cl)
-  {
+{
+  
   //[[J]]: Concatenating what was on separate lines saves us 12B/line, give or take
   cl.print("<?xml version = \"1.0\" ?>");
   cl.print("<inputs>");
-  cl.print("<sensor>");
+  cl.print("<sensD1>");
   cl.print(tempDallas1);
-  Serial.print(tempDallas1);
-  cl.print("</sensor>");
+  cl.print("</sensD1>");
 //
-  cl.print("<sensor>");
+  cl.print("<sensors>");
   cl.print(tempSHT1x);
-  cl.print("</sensor>");
+  cl.print("</sensors");
 //
-  cl.print("<sensor>");
+  cl.print("<sensors>");
   cl.print(rhSHT1x);
-  cl.print("</sensor>");
+  cl.print("</sensors>");
 //
   cl.print("<modesw>");
-//  cl.print(systemMode);
+  cl.print(systemMode);
   cl.print("</modesw>");
 //
 
   cl.print("</inputs>");
 }
 
-void setEnviroControls()
+
+void setEnviroControls(void)
 {
     // LED 1 (pin 6)
     if (strstr(HTTP_req, "DayStart")) {
@@ -356,7 +362,6 @@ void setEnviroControls()
       
     }
 }
-
 /*************************************************************************************************
  *                                         Mode Definitions                                       *
  **************************************************************************************************/
@@ -448,35 +453,3 @@ void tempRegulation(){
   return;
 }
 
-/*
-#include <OneWire.h>
-#include <DallasTemperature.h>
-
-// Data wire is plugged into port 2 on the Arduino
-#define ONE_WIRE_BUS A0
-
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
-DeviceAddress insideThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };
-
-void setup(void)
-{
-  Serial.begin(9600);
-  sensors.begin();
-  
-}
-
-
-void loop(void)
-{ 
-  // call sensors.requestTemperatures() to issue a global temperature 
-  // request to all devices on the bus
-  Serial.print("Requesting temperatures...");
-  sensors.requestTemperatures(); // Send the command to get temperatures
-  float temptoprint = sensors.getTempF(insideThermometer);
-  Serial.println("DONE");
-  
-  Serial.print(" Temp F: ");
-  Serial.println(temptoprint); // Makes a second call to getTempC and then converts to Fahrenheit
-}
-*/
