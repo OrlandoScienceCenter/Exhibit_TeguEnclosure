@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Arduino SD Card Web Page using Ajax with XML</title>
+        <script>
+        function GetArduinoInputs()
+        {
+            nocache = "&nocache=" + Math.random() * 1000000;
+            var request = new XMLHttpRequest();
+            request.onreadystatechange = function()
+            {
+                if (this.readyState == 4) {
+                    if (this.status == 200) {
+                        if (this.responseXML != null) {
+                            // extract XML data from XML file (containing switch states and analog value)
+                            document.getElementById("input1").innerHTML =
+                                this.responseXML.getElementsByTagName('sensor')[0].childNodes[0].nodeValue;
+                            document.getElementById("input2").innerHTML =
+                                this.responseXML.getElementsByTagName('sensor')[1].childNodes[0].nodeValue;
+                            document.getElementById("input3").innerHTML =
+                                this.responseXML.getElementsByTagName('sensor')[2].childNodes[0].nodeValue;	
+			
+			       	            
+			    }
+       		       }
+		}
+	}
+            request.open("GET", "ajax_inputs" + nocache, true);
+            request.send(null);
+            setTimeout('GetArduinoInputs()', 1000);		
+        	}
+    </script>
+    </head>
+ <style>
+		.IO_box {
+			float: left;
+			margin: 0 20px 20px 0;
+			border: 1px solid blue;
+			padding: 0 5px 0 5px;
+			width: 150px;
+		}
+		h1 {
+			font-size: 120%;
+			color: blue;
+			margin: 0 0 10px 0;
+		}
+		h2 {
+			font-size: 85%;
+			color: #5734E6;
+			margin: 5px 0 5px 0;
+		}
+		p, form, button {
+			font-size: 80%;
+			color: #252525;
+		}
+		.small_text {
+			font-size: 70%;
+			color: #737373;
+		}
+	</style>
+
+    </head>
+    <body onload="GetArduinoInputs()">
+        <h1>Teddy the Tegu - Control Panel</h1>
+        <div class="IO_box">
+			<h2>Sensor Values</h2>
+			<p>Basking Temp:&nbsp;&nbsp;<span id="input1">.....</span>&nbsp;&deg;F</p>
+			<p>Ambient Temp: <span id="input2">.....</span>&nbsp;&deg;F</p>
+			<p>Rel Humidity:&nbsp;&nbsp;&nbsp;&nbsp;<span id="input3">.....</span>&nbsp;%RH</p>
+    				
+		</div>
+		<div class="IO_box">
+			<h2>System Mode</h2>
+			<p>System <span id="system_mode">......</span></p>
+
+		</div>
+		<div class="IO_box">
+			<h2>LEDs Using Checkboxes</h2>
+			<form id="check_LEDs" name="LED_form">
+
+			</form>
+		</div>
+		<div class="IO_box">
+			<h2>LEDs Using Buttons</h2>
+			<button type="button" id="LED3" onclick="GetButton1()">LED 3 is OFF (D8)</button><br /><br />
+			<button type="button" id="LED4" onclick="GetButton2()">LED 4 is OFF (D9)</button><br /><br />
+			<p class="small_text">D10 to D13 used by Ethernet shield</p>
+		</div>
+    </body>
+</html>
