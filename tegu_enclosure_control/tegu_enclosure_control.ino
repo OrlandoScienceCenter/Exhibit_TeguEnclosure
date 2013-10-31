@@ -118,6 +118,7 @@ byte hysDrift; //[[J]]: A comment on what this is might be appropriate here
 boolean hysActive;
 byte dayStartTime;  //[[J]]: Might be worth defining default here
 byte nightStartTime;
+byte isDayFlag;
 boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling [[J]]: Make this a byte, to match use?
 byte systemMode;
 /*
@@ -161,7 +162,7 @@ int main(void) {
     damperServos.attach(6); 
 
     // SERIAL
-     // Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
+     Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
     // [[J]]: Just as an aside, you can leave the serial commands and surround them with #if/#endif
 
     // Starts ethernet and Server
@@ -177,6 +178,7 @@ int main(void) {
     // Time Setpoints
     dayStartTime = 8;
     nightStartTime = 14;
+    offMode();
   }
 
   /*************************************************************************************************
@@ -193,9 +195,11 @@ int main(void) {
       if(isDay()){            // Check Day/Night States, and do the appropriate on/offs of equipment     
         //Serial.println("DayMode");
         dayMode();          // Day mode power settings 
+        isDayFlag = 1;
       } else {
         //Serial.println("NightMode");
         nightMode();        // Night mode power settings 
+        isDayFlag = 0;
       } 
     } else if (digitalRead(SERVICE_ENABLE_PIN)){
       systemMode = SERVICE_STATE;
@@ -259,6 +263,7 @@ void listenForEthernetClients() {
         // respond to client only after last line received
         if ('\n' == c && currentLineIsBlank) {
           // send a standard http response header
+          Serial.println(HTTP_req);
           client.println("HTTP/1.1 200 OK");
           // remainder of header follows below, depending on if
           // web page or XML page is requested
@@ -277,6 +282,7 @@ void listenForEthernetClients() {
             client.println("Content-Type: text/html"); //[[J]]: Oddly enough, no memory savings here
             client.println("Connection: keep-alive");
             client.println();
+            setEnviroControls();
             // send web page
             webFile = SD.open(INDEX_FILENAME);        // open web page file
             if (webFile) {
@@ -316,39 +322,105 @@ void XML_response(EthernetClient cl)
   {
   //[[J]]: Concatenating what was on separate lines saves us 12B/line, give or take
   cl.print("<?xml version = \"1.0\" ?>");
-  cl.print("<inputs>");
-  cl.print("<sensor>");
-  cl.print(tempDallas1);
-  cl.print("</sensor>");
-//
-  cl.print("<sensor>");
-  cl.print(tempSHT1x);
-  cl.print("</sensor>");
-//
-  cl.print("<sensor>");
-  cl.print(rhSHT1x);
-  cl.print("</sensor>");
-//
-  cl.print("<mode>");
-  cl.print(systemMode);
-  cl.print("</mode>");
-//
+  cl.print("<data>");
+    cl.print("<sensor>");
+    cl.print(tempDallas1);
+    cl.print("</sensor>");
+  //
+    cl.print("<sensor>");
+    cl.print(tempSHT1x);
+    cl.print("</sensor>");
+  //
+    cl.print("<sensor>");
+    cl.print(rhSHT1x);
+    cl.print("</sensor>");
+  //
+    cl.print("<mode>");
+    cl.print(systemMode);
+    cl.print("</mode>");
+    
+    cl.print("<mode>");
+    cl.print(isDayFlag);
+    cl.print("</mode>");
+   
+    cl.print("<time>");
+    cl.print(tm.Hour);
+    cl.print(":");
+    cl.print(tm.Minute);
+    cl.print("</time>");
 
-  cl.print("</inputs>");
+//
+    cl.print("<out>");
+    cl.print(digitalRead(T5_1));
+    cl.print("</out>");
+
+    cl.print("<out>");
+    cl.print(digitalRead(T5_2));
+    cl.print("</out>");
+
+    cl.print("<out>");
+    cl.print(digitalRead(MVL));
+    cl.print("</out>");
+
+    cl.print("<out>");
+    cl.print(digitalRead(FAN));
+    cl.print("</out>");
+
+    cl.print("<out>");
+    cl.print(digitalRead(PUMP));
+    cl.print("</out>");
+
+  cl.print("</data>");   
 }
 
 void setEnviroControls()
 {
-    // LED 1 (pin 6)
-    if (strstr(HTTP_req, "DayStart")) {
-       // LED_state[0] = 1;  // save LED state
-      //  digitalWrite(6, HIGH);
-    }
-    else if (strstr(HTTP_req, "NightStart")) {
-      //  LED_state[0] = 0;  // save LED state
-      //  digitalWrite(6, LOW);
-      
-    }
+/* okay, so, this is what a normal request looks like 
+GET /ajax_inputs&nocache=359634.24970390L
+
+then, when we get a request from the form, it'll look something like this
+GET /?dayStart=8&nightStart=15 HTTP/1.10L
+
+and, if your'e curious, on first page load, what the request looks like
+GET / HTTP/1.1
+Host: 10.1.1.100
+Conne
+GET /ajax_inputs&nocache=522250.52053100L
+
+Ideally, I'd like to be able to at least set the day start time, night start time, 
+requested temperature and requested humidity. there are others, but we'll see what we can come up with. 
+
+I can always change what the return values are, even add a special character into it?
+Also of note, if one value is entered, and the other is not, it returns nothing after the =
+
+This is the form section of the HTML code. 
+      <form id="systemSettings" name="settingsForm">
+         <input type="number" name="dayStart" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
+         <input type="number" name="nightStart" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
+         <input type="submit" value="Update Settings">
+      </form>  
+
+I think i'm also runningup against ram limits, or something, because with some functions,
+it'll cause the web page to no longer be displayed. The GET request is still processsed, but does not return the webFile
+to the browser.
+*/
+
+      //// This section will return a byte of where the first character of the "value" right after the equals would start
+      // this works up until you have a two digit time. It also always returnst he first value of the nocache= number. *shrug*
+char* cindex = (strchr(HTTP_req,'dayStart='));
+byte index = (cindex-HTTP_req+1);
+//while(index!=NULL){
+Serial.println(HTTP_req[index]);
+//}
+
+
+/*    I really think this would work (or similar) but It crashes/runs out of ram or something.
+I have to power cycle the arduino to get back operational 
+
+char * cvalue = (strtok(HTTP_req, "=&"));
+Serial.println(cvalue);
+*/
+
 }
 
 /*************************************************************************************************
@@ -412,6 +484,9 @@ void offMode(){
   // T5 Lights at half power
   digitalWrite(T5_1, LOW);
   digitalWrite(T5_2, LOW);
+
+  // Mercury Vapor Lights off
+  digitalWrite(MVL, LOW);
 
   // Waterfall Off
   digitalWrite(PUMP, LOW);
