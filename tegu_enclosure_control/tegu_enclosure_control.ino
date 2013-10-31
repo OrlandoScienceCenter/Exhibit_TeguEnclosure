@@ -44,7 +44,6 @@
 #define clockPulseWidth 1
 #define supplyVoltage sht1xalt::VOLTAGE_5V
 // If you want to report tempSHT1xerature units in Fahrenheit instead of Celcius, Change which line is commented/uncomented 
-//#define temperatureUnits sht1xalt::UNITS_CELCIUS
 #define temperatureUnits sht1xalt::UNITS_FAHRENHEIT
 sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temperatureUnits );
 
@@ -70,7 +69,7 @@ char req_index = 0;              // Index into HTTP_req buffer
  *                                  Dallas 1 Wire Sensor Settings                                 *
  **************************************************************************************************/
 #define ONE_WIRE_BUS A0               // Where is the data pin plugged into?
-#define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
+//define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
 OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices 
 DallasTemperature dSensors(&oneWire);
 DeviceAddress dThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//28A327230500007F; // Device address
@@ -88,7 +87,6 @@ DeviceAddress dThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//
 // Pin 4 is for SD Card  [[J]]: Why isn't this defined here?
 #define PUMP 3
 #define FAN 2
-//#define A3 
 //A4 SDA    I2C/TWI  [[J]]: Necessary?
 //A5 SCL    I2C/TWI
 Servo damperServos;
@@ -104,7 +102,7 @@ Servo damperServos;
 #define ON_STATE 1
 #define SERVICE_STATE 2
 
-#define INDEX_FILENAME "index3.htm"
+#define INDEX_FILENAME "index.htm"
 
 #define DAMPERS_OPEN 0
 #define DAMPERS_CLOSED 90
@@ -121,11 +119,12 @@ boolean hysActive;
 byte dayStartTime;  //[[J]]: Might be worth defining default here
 byte nightStartTime;
 boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling [[J]]: Make this a byte, to match use?
+byte systemMode;
 /*
-  #define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
- #define eTargetRH   2
- #define eDayStartTime 3
- #define eNightStartTime 4 
+  define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
+ define eTargetRH   2
+ define eDayStartTime 3
+ define eNightStartTime 4 
  */
 
 int main(void) {
@@ -157,13 +156,12 @@ int main(void) {
 
     // Initialize the Dallas OneWire Sensors
     dSensors.begin();
-    dSensors.setResolution(dThermometer, TEMPERATURE_PRECISION);
-  
+ 
     //Sets up servos to be controlled. One output going to three servos.
     damperServos.attach(6); 
 
     // SERIAL
-      Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
+     // Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
     // [[J]]: Just as an aside, you can leave the serial commands and surround them with #if/#endif
 
     // Starts ethernet and Server
@@ -187,8 +185,6 @@ int main(void) {
   //void loop(){
   while (1) {
     delay (100);
-    byte systemMode;
-
     //[[J]]: This saved 8 bytes. Not a lot, but something. Unless there's a reason have it in each branch.
     getSensorData(); // Pull all the sensor data. No returns, all values plugged into global vars
     if (digitalRead(AUTO_ENABLE_PIN)){
@@ -219,11 +215,10 @@ int main(void) {
  **************************************************************************************************/
 void getSensorData() { // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
-//
-    dSensors.requestTemperatures();            // Send the Command to get the temperatures
+    dSensors.requestTemperatures();                 // Send the Command to get the temperatures from the dallas sensors.
     tempDallas1 = dSensors.getTempF(dThermometer);  // Request temperature back in Farenheit (easy to change to celcius..)
-    sensor.measure(tempSHT1x, rhSHT1x);          //SHT1x reading
-    RTC.read(tm);                           //RTC Reading
+    sensor.measure(tempSHT1x, rhSHT1x);             //SHT1x reading
+    RTC.read(tm);                                   //RTC Reading
     lastReadingTime = millis();
   }
 } 
@@ -324,7 +319,6 @@ void XML_response(EthernetClient cl)
   cl.print("<inputs>");
   cl.print("<sensor>");
   cl.print(tempDallas1);
-  Serial.print(tempDallas1);
   cl.print("</sensor>");
 //
   cl.print("<sensor>");
@@ -335,9 +329,9 @@ void XML_response(EthernetClient cl)
   cl.print(rhSHT1x);
   cl.print("</sensor>");
 //
-  cl.print("<modesw>");
-//  cl.print(systemMode);
-  cl.print("</modesw>");
+  cl.print("<mode>");
+  cl.print(systemMode);
+  cl.print("</mode>");
 //
 
   cl.print("</inputs>");
@@ -448,35 +442,4 @@ void tempRegulation(){
   return;
 }
 
-/*
-#include <OneWire.h>
-#include <DallasTemperature.h>
 
-// Data wire is plugged into port 2 on the Arduino
-#define ONE_WIRE_BUS A0
-
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
-DeviceAddress insideThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };
-
-void setup(void)
-{
-  Serial.begin(9600);
-  sensors.begin();
-  
-}
-
-
-void loop(void)
-{ 
-  // call sensors.requestTemperatures() to issue a global temperature 
-  // request to all devices on the bus
-  Serial.print("Requesting temperatures...");
-  sensors.requestTemperatures(); // Send the command to get temperatures
-  float temptoprint = sensors.getTempF(insideThermometer);
-  Serial.println("DONE");
-  
-  Serial.print(" Temp F: ");
-  Serial.println(temptoprint); // Makes a second call to getTempC and then converts to Fahrenheit
-}
-*/
