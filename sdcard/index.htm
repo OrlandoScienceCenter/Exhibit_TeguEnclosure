@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Arduino SD Card Web Page using Ajax with XML</title>
+        <title>Teddy the Tegu - Control Panel</title>
         <script>
         function getArduinoData()
         {
@@ -92,16 +92,24 @@
 				{	
 				document.getElementById("PUMP").innerHTML = "On";
         	       	        }
-		///////////////////////////////////
-			// Get Day and Night Values
-		//        document.getElementById("dayStartTime").innerHTML =
-              //                  this.responseXML.getElementsByTagName('set')[0].childNodes[0].nodeValue;
-
-		//        document.getElementById("nightStartTime").innerHTML =
-               //                 this.responseXML.getElementsByTagName('set')[1].childNodes[0].nodeValue;
-
-
-
+			// Get Target Temperature
+			document.getElementById("targetTemp").innerHTML =
+                                this.responseXML.getElementsByTagName('v')[0].childNodes[0].nodeValue;
+			// Get dayStart Time
+			document.getElementById("dayStartTime").innerHTML =
+                                this.responseXML.getElementsByTagName('v')[1].childNodes[0].nodeValue;
+			// Get nightStartTime
+			document.getElementById("nightStartTime").innerHTML =
+                                this.responseXML.getElementsByTagName('v')[2].childNodes[0].nodeValue;
+  			// Ventilation/Cooling Mode
+			if (this.responseXML.getElementsByTagName('v')[3].childNodes[0].nodeValue == "0")
+				{
+				document.getElementById("VENT").innerHTML = "Recirculate";
+				}
+			else if (this.responseXML.getElementsByTagName('v')[3].childNodes[0].nodeValue == "1")
+				{	
+				document.getElementById("VENT").innerHTML = "Venting";
+        	       	        }
 
 			    }
        		       }
@@ -157,14 +165,15 @@
 			<p>System -&nbsp;<span id="system_mode">......</span></p>
 			<p>Day/Night -&nbsp;<span id="isDay">.....</span></p>
 			<p>Time -&nbsp;&nbsp;&nbsp;<span id="time">.....</span></p>
+			<p>Ventilation -<span id="VENT">.....</span></p>
 
 		</div>
 		<div class="IO_box">
 			<h2>System Outputs</h2>
-			<p>T5 Light 1 -&nbsp;&nbsp;<span id="T5_1">...</span></p>
-			<p>T5 Light 2 -&nbsp;&nbsp;<span id="T5_2">...</span></p>
-			<p>MV Lights  -&nbsp;&nbsp;<span id="MVL">...</span></p>
-			<p>Fan Status -&nbsp;&nbsp;<span id="FAN">...</span></p>
+			<p>T5 Light 1 -&nbsp;&nbsp;&nbsp;<span id="T5_1">...</span></p>
+			<p>T5 Light 2 -&nbsp;&nbsp;&nbsp;<span id="T5_2">...</span></p>
+			<p>MV Lights  -&nbsp;&nbsp;&nbsp;<span id="MVL">...</span></p>
+			<p>Fan Status -&nbsp;&nbsp;&nbsp;<span id="FAN">...</span></p>
 			<p>Pump Status -&nbsp;<span id="PUMP">...</span></p>
 			
 
@@ -172,9 +181,11 @@
 		<div class="IO_box">
 			<h2>System Settings</h2>
 			<form id="systemSettings" name="settingsForm" method=get >
-				<input type="number" name="d" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
-				<input type="number" name="n" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
-				<input type="submit" value="Update Settings">
+				<input type="number" name="day" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
+				<input type="number" name="night" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
+				<input type="number" name="Temp" size=2 max=100 min=70 value="">Target Temp<br /><br />
+				<input type="number" name="Humid" size=2 max=100 min=35 value="">Target Humidity<br /><br />				
+			<input type="submit" value="Update Settings">
 			</form>			
 		</div>
     </body>
