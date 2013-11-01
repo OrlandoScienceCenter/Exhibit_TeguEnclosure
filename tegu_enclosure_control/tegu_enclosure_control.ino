@@ -116,12 +116,12 @@ float tempSHT1x;
 float rhSHT1x;
 float tempDallas1;
 tmElements_t tm; //[[J]]: Explanatory comment?
-byte targetTemp;
-byte targetRH;
+unsigned char  targetTemp;
+unsigned char  targetRH;
 byte hysDrift; //[[J]]: A comment on what this is might be appropriate here
 boolean hysActive;
-byte dayStartTime;  //[[J]]: Might be worth defining default here
-byte nightStartTime;
+unsigned char dayStartTime;  //[[J]]: Might be worth defining default here
+unsigned char  nightStartTime;
 byte isDayFlag;  //Byte instead of boolean for XML exchange
 boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling [[J]]: Make this a byte, to match use?
 byte systemMode;
@@ -284,9 +284,13 @@ void listenForEthernetClients() {
             client.println("Content-Type: text/xml");
             client.println("Connection: keep-alive"); 
             client.println();
-            setEnviroControls();  //[[J]]: Why is this in the middle of this?
+            if (strstr(HTTP_req, "?")){
+              setEnviroControls();  //[[J]]: Why is this in the middle of this?
+              
+            }
             // send XML file containing input states
             XML_response(client);
+            
           } 
           else {  // web page request
 
@@ -294,7 +298,9 @@ void listenForEthernetClients() {
             client.println("Content-Type: text/html"); //[[J]]: Oddly enough, no memory savings here
             client.println("Connection: keep-alive");
             client.println();
-            setEnviroControls();
+            if (strstr(HTTP_req, "?")){
+              setEnviroControls();
+              }
             // send web page
             webFile = SD.open(INDEX_FILENAME);        // open web page file
             if (webFile) {
@@ -382,6 +388,7 @@ void XML_response(EthernetClient cl)
   cl.print("</o>\n</data>");
 
   //      cl.print("</data>");   
+
 }
 
 void setEnviroControls()
@@ -428,12 +435,16 @@ void setEnviroControls()
   unsigned char index;
   crudeParse(HTTP_req, &dayStartTime, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
-  crudeParse(&HTTP_req[index], &nightStartTime, &index);
+  crudeParse(HTTP_req, &nightStartTime, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
-  crudeParse(&HTTP_req[index], &targetTemp, &index);
+  crudeParse(HTTP_req, &targetTemp, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
-  crudeParse(&HTTP_req[index], &targetRH, &index);
-
+  crudeParse(HTTP_req, &targetRH, &index);
+  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
+    Serial.println(dayStartTime);
+    Serial.println(nightStartTime);
+    Serial.println(targetTemp);
+    Serial.println(targetRH);
 }
 
 /*************************************************************************************************
@@ -544,15 +555,16 @@ void tempRegulation(){
  * use- day and night are 0-23, temp is < 212, humidity is < 101. 
  */
 void crudeParse(char str[], unsigned char * ret, unsigned char * index) {
+
   unsigned char i = 0;
   unsigned char num = 0;
   while (str[i]) {
-    if ('=' == str[i]) { //Imitation of indexOf and strstr
-      num = num*10 + (str[++i] - '0'); //Imitation of atoi
+    if ('=' == str[i]) {
+      num = num*10 + (str[++i] - '0');
       i++;
 
-      while (!('\0' == str[i] || '&' == str[i] || ' ' == str[i])) { 
-        num = num*10 + (str[i]-'0'); //Imitation of atoi
+      while (!('\0' == str[i] || '&' == str[i] || ' ' == str[i])) {
+        num = num*10 + (str[i]-'0');
         i++;
       }
       *index = i;
