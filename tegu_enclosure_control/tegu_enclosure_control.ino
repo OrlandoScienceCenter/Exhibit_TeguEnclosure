@@ -55,7 +55,7 @@
    **************************************************************************************************/
   
   // size of buffer used to capture HTTP requests
-  #define REQ_BUF_SZ   60
+#define REQ_BUF_SZ   40
   
   //MAC Address
   byte mac[] = { 
@@ -283,6 +283,9 @@
               // send XML file containing input states
               XML_response(client);
             } else {  // web page request
+
+          
+           else {  // web page request
               // send rest of HTTP header
               client.println("Content-Type: text/html"); //[[J]]: Oddly enough, no memory savings here
               client.println("Connection: keep-alive");
@@ -420,9 +423,7 @@
   //Serial.println(HTTP_req[index]);
   //}
   
-  
   /*    I really think this would work (or similar) but It crashes/runs out of ram or something.
-  
   char * cvalue = (strtok(HTTP_req, "?=&")); // it is supposed to seperate out strings and make things do. not in this implementation. cause reasons. 
   Serial.println(cvalue);
   */
@@ -477,50 +478,50 @@
     // Fan on 
     digitalWrite(FAN, HIGH);
   
-    // damperServos Open
-    damperServos.write(DAMPERS_OPEN);
-  
-    // Heat lamps off
-    digitalWrite(MVL, LOW);
-  
-  }
-  
-  void offMode(){
-    // This will determine what is on/off in OFF mode. 
-    // T5 Lights at half power
-    digitalWrite(T5_1, LOW);
-    digitalWrite(T5_2, LOW);
-  
-    // Mercury Vapor Lights off
-    digitalWrite(MVL, LOW);
-  
-    // Waterfall Off
-    digitalWrite(PUMP, LOW);
-  
-    // Fan on 
-    digitalWrite(FAN, LOW);
-  }
-  
-  void tempRegulation(){
-    /*  Serial.println("Temp Regulation");
-     Serial.println(tempSHT1x);
-     Serial.println(targetTemp);
-     Serial.println(hysActive);
-     */
-    boolean cooling = false;
-    if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
-      ventMode = true ;                                 // sets the return value to 1, indicating we're in a cooling stage
-      hysActive = true;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
-      damperServos.write(DAMPERS_OPEN);// go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
-      //  Serial.println("Cooling Active");
-    }  
-    if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
-      ventMode = false ;                              // Indicate we're out of hysteresis condition
-      hysActive = false;
-      damperServos.write(DAMPERS_CLOSED);
-      // Serial.println("Recirculate Active");
-    }  
-    return;
-  }
-  
+  // damperServos Open 
+  damperServos.write(DAMPERS_OPEN);
+
+  // Heat lamps off
+  digitalWrite(MVL, LOW);
+
+}
+
+void offMode(){
+  // This will determine what is on/off in OFF mode. 
+  // T5 Lights at half power
+  digitalWrite(T5_1, LOW);
+  digitalWrite(T5_2, LOW);
+
+  // Mercury Vapor Lights off
+  digitalWrite(MVL, LOW);
+
+  // Waterfall Off
+  digitalWrite(PUMP, LOW);
+
+  // Fan on 
+  digitalWrite(FAN, LOW);
+}
+
+void tempRegulation(){
+  /*  Serial.println("Temp Regulation");
+   Serial.println(tempSHT1x);
+   Serial.println(targetTemp);
+   Serial.println(hysActive);
+   */
+  boolean cooling = false;
+  if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
+    ventMode = true ;                                 // sets the return value to 1, indicating we're in a cooling stage
+    hysActive = true;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
+    damperServos.write(DAMPERS_OPEN);// go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
+    //  Serial.println("Cooling Active");
+  }  
+  if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
+    ventMode = false ;                              // Indicate we're out of hysteresis condition
+    hysActive = false;
+    damperServos.write(DAMPERS_CLOSED);
+    // Serial.println("Recirculate Active");
+  }  
+  return;
+}
+
 
