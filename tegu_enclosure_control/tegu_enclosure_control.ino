@@ -14,6 +14,8 @@
  
  Lots of code snippits and ideas obtained through examples provided with libraries
  
+[[J]]: Look for comments from me prefaced with [[J]]. -(-*
+ 
  
  */
 
@@ -58,7 +60,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
 
 //MAC Address
 byte mac[] = { 
-  0x90, 0xA2, 0xDA, 0x0E, 0x40, 0x64, }; // Sets the Mac Address of the program to that of the device. 
+  0x90, 0xA2, 0xDA, 0x0E, 0x40, 0x64, }; // Sets the Mac address of the program to that of the device. 
 //Change these to real values
 IPAddress ip(10,1,1,100); // Sets the manual IP address of the device. Change to real values
 EthernetServer server(80);  // Create Server at port 8088 [[J]]: Do you mean 80 or 8088?
@@ -69,7 +71,7 @@ char req_index = 0;              // Index into HTTP_req buffer
 /*************************************************************************************************
  *                                  Dallas 1 Wire Sensor Settings                                 *
  **************************************************************************************************/
-#define ONE_WIRE_BUS A0               // Where is the data pin plugged into?
+#define ONE_WIRE_BUS A0               // Where is the data pin plugged in?
 #define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
 OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices 
 DallasTemperature dSensors(&oneWire);
@@ -274,7 +276,7 @@ void listenForEthernetClients() {
             client.println("Content-Type: text/xml");
             client.println("Connection: keep-alive"); 
             client.println();
-            setEnviroControls();
+            setEnviroControls();  //[[J]]: Why is this in the middle of this?
             // send XML file containing input states
             XML_response(client);
           } else {  // web page request
