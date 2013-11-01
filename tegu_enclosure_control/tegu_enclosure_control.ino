@@ -46,7 +46,6 @@
 #define clockPulseWidth 1
 #define supplyVoltage sht1xalt::VOLTAGE_5V
 // If you want to report tempSHT1xerature units in Fahrenheit instead of Celcius, Change which line is commented/uncomented 
-//#define temperatureUnits sht1xalt::UNITS_CELCIUS
 #define temperatureUnits sht1xalt::UNITS_FAHRENHEIT
 sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temperatureUnits );
 
@@ -56,7 +55,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
  **************************************************************************************************/
 
 // size of buffer used to capture HTTP requests
-#define REQ_BUF_SZ   40
+#define REQ_BUF_SZ   60
 
 //MAC Address
 byte mac[] = { 
@@ -72,7 +71,7 @@ char req_index = 0;              // Index into HTTP_req buffer
  *                                  Dallas 1 Wire Sensor Settings                                 *
  **************************************************************************************************/
 #define ONE_WIRE_BUS A0               // Where is the data pin plugged in?
-#define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
+//define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
 OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices 
 DallasTemperature dSensors(&oneWire);
 DeviceAddress dThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//28A327230500007F; // Device address
@@ -90,7 +89,6 @@ DeviceAddress dThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//
 // Pin 4 is for SD Card  [[J]]: Why isn't this defined here?
 #define PUMP 3
 #define FAN 2
-//#define A3 
 //A4 SDA    I2C/TWI  [[J]]: Necessary?
 //A5 SCL    I2C/TWI
 Servo damperServos;
@@ -106,7 +104,7 @@ Servo damperServos;
 #define ON_STATE 1
 #define SERVICE_STATE 2
 
-#define INDEX_FILENAME "index3.htm"
+#define INDEX_FILENAME "index.htm"
 
 #define DAMPERS_OPEN 0
 #define DAMPERS_CLOSED 90
@@ -122,12 +120,14 @@ byte hysDrift; //[[J]]: A comment on what this is might be appropriate here
 boolean hysActive;
 byte dayStartTime;  //[[J]]: Might be worth defining default here
 byte nightStartTime;
+byte isDayFlag;
 boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling [[J]]: Make this a byte, to match use?
+byte systemMode;
 /*
-  #define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
- #define eTargetRH   2
- #define eDayStartTime 3
- #define eNightStartTime 4 
+  define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
+ define eTargetRH   2
+ define eDayStartTime 3
+ define eNightStartTime 4 
  */
 
 int main(void) {
@@ -159,13 +159,12 @@ int main(void) {
 
     // Initialize the Dallas OneWire Sensors
     dSensors.begin();
-    dSensors.setResolution(dThermometer, TEMPERATURE_PRECISION);
-  
+ 
     //Sets up servos to be controlled. One output going to three servos.
     damperServos.attach(6); 
 
     // SERIAL
-      Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
+     Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
     // [[J]]: Just as an aside, you can leave the serial commands and surround them with #if/#endif
 
     // Starts ethernet and Server
@@ -181,6 +180,7 @@ int main(void) {
     // Time Setpoints
     dayStartTime = 8;
     nightStartTime = 14;
+    offMode();
   }
 
   /*************************************************************************************************
@@ -189,8 +189,6 @@ int main(void) {
   //void loop(){
   while (1) {
     delay (100);
-    byte systemMode;
-
     //[[J]]: This saved 8 bytes. Not a lot, but something. Unless there's a reason have it in each branch.
     getSensorData(); // Pull all the sensor data. No returns, all values plugged into global vars
     if (digitalRead(AUTO_ENABLE_PIN)){
@@ -199,9 +197,11 @@ int main(void) {
       if(isDay()){            // Check Day/Night States, and do the appropriate on/offs of equipment     
         //Serial.println("DayMode");
         dayMode();          // Day mode power settings 
+        isDayFlag = 1;
       } else {
         //Serial.println("NightMode");
         nightMode();        // Night mode power settings 
+        isDayFlag = 0;
       } 
     } else if (digitalRead(SERVICE_ENABLE_PIN)){
       systemMode = SERVICE_STATE;
@@ -221,11 +221,10 @@ int main(void) {
  **************************************************************************************************/
 void getSensorData() { // check for a reading no more than once a second.
   if (millis() - lastReadingTime > 1000){
-//
-    dSensors.requestTemperatures();            // Send the Command to get the temperatures
+    dSensors.requestTemperatures();                 // Send the Command to get the temperatures from the dallas sensors.
     tempDallas1 = dSensors.getTempF(dThermometer);  // Request temperature back in Farenheit (easy to change to celcius..)
-    sensor.measure(tempSHT1x, rhSHT1x);          //SHT1x reading
-    RTC.read(tm);                           //RTC Reading
+    sensor.measure(tempSHT1x, rhSHT1x);             //SHT1x reading
+    RTC.read(tm);                                   //RTC Reading
     lastReadingTime = millis();
   }
 } 
@@ -266,11 +265,12 @@ void listenForEthernetClients() {
         // respond to client only after last line received
         if ('\n' == c && currentLineIsBlank) {
           // send a standard http response header
+          Serial.println(HTTP_req);
           client.println("HTTP/1.1 200 OK");
           // remainder of header follows below, depending on if
           // web page or XML page is requested
           // Ajax request - send XML file
-          if (strstr(HTTP_req, "ajax_inputs")) {
+          if (strstr(HTTP_req, "ajax")) {
             // send rest of HTTP header
             // [[J]]: Memory savings of 8B if concatenated with next line, but readability decreases
             client.println("Content-Type: text/xml");
@@ -284,6 +284,7 @@ void listenForEthernetClients() {
             client.println("Content-Type: text/html"); //[[J]]: Oddly enough, no memory savings here
             client.println("Connection: keep-alive");
             client.println();
+            setEnviroControls();
             // send web page
             webFile = SD.open(INDEX_FILENAME);        // open web page file
             if (webFile) {
@@ -323,40 +324,104 @@ void XML_response(EthernetClient cl)
   {
   //[[J]]: Concatenating what was on separate lines saves us 12B/line, give or take
   cl.print("<?xml version = \"1.0\" ?>");
-  cl.print("<inputs>");
-  cl.print("<sensor>");
-  cl.print(tempDallas1);
-  Serial.print(tempDallas1);
-  cl.print("</sensor>");
-//
-  cl.print("<sensor>");
-  cl.print(tempSHT1x);
-  cl.print("</sensor>");
-//
-  cl.print("<sensor>");
-  cl.print(rhSHT1x);
-  cl.print("</sensor>");
-//
-  cl.print("<modesw>");
-//  cl.print(systemMode);
-  cl.print("</modesw>");
-//
+  cl.print("<data>");
+    cl.print("<sen>");
+    cl.print(tempDallas1);
+    cl.print("</sen>");
+  //
+    cl.print("<sen>");
+    cl.print(tempSHT1x);
+    cl.print("</sen>");
+  //
+    cl.print("<sen>");
+    cl.print(rhSHT1x);
+    cl.print("</sen>");
+  //
+    cl.print("<m>");
+    cl.print(systemMode);
+    cl.print("</m>");
+    
+    cl.print("<m>");
+    cl.print(isDayFlag);
+    cl.print("</m>");
+   
+    cl.print("<t>");
+    cl.print(tm.Hour);
+    cl.print(":");
+    cl.print(tm.Minute);
+    cl.print("</t>");
 
-  cl.print("</inputs>");
+//
+    cl.print("<o>");
+    cl.print(digitalRead(T5_1));
+    cl.print("</o>");
+
+    cl.print("<o>");
+    cl.print(digitalRead(T5_2));
+    cl.print("</o>");
+
+    cl.print("<o>");
+    cl.print(digitalRead(MVL));
+    cl.print("</o>");
+
+    cl.print("<o>");
+    cl.print(digitalRead(FAN));
+    cl.print("</o>");
+
+    cl.print("<o>");
+    cl.print(digitalRead(PUMP));
+    cl.print("</o>");
+
+  cl.print("</data>");   
 }
 
 void setEnviroControls()
 {
-    // LED 1 (pin 6)
-    if (strstr(HTTP_req, "DayStart")) {
-       // LED_state[0] = 1;  // save LED state
-      //  digitalWrite(6, HIGH);
-    }
-    else if (strstr(HTTP_req, "NightStart")) {
-      //  LED_state[0] = 0;  // save LED state
-      //  digitalWrite(6, LOW);
-      
-    }
+/* okay, so, this is what a normal request looks like 
+GET /ajax_inputs&nocache=359634.24970390L
+
+then, when we get a request from the form, it'll look something like this
+GET /?dayStart=8&nightStart=15 HTTP/1.10L
+
+and, if your'e curious, on first page load, what the request looks like
+GET / HTTP/1.1
+Host: 10.1.1.100
+Conne
+GET /ajax_inputs&nocache=522250.52053100L
+
+Ideally, I'd like to be able to at least set the day start time, night start time, 
+requested temperature and requested humidity. there are others, but we'll see what we can come up with. 
+
+I can always change what the return values are, even add a special character into it?
+Also of note, if one value is entered, and the other is not, it returns nothing after the =
+
+This is the form section of the HTML code. 
+      <form id="systemSettings" name="settingsForm">
+         <input type="number" name="dayStart" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
+         <input type="number" name="nightStart" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
+         <input type="submit" value="Update Settings">
+      </form>  
+
+I think i'm also runningup against ram limits, or something, because with some functions,
+it'll cause the web page to no longer be displayed. The GET request is still processsed, but does not return the webFile
+to the browser.
+*/
+
+      //// This section will return a byte of where the first character of the "value" right after the equals would start
+      // this works up until you have a two digit time. It also always returnst he first value of the nocache= number. *shrug*
+//char* cindex = (strchr(HTTP_req,'dayStart='));
+//byte index = (cindex-HTTP_req+1);
+//while(index!=NULL){
+//Serial.println(HTTP_req[index]);
+//}
+
+
+/*    I really think this would work (or similar) but It crashes/runs out of ram or something.
+
+char * cvalue = (strtok(HTTP_req, "?=&")); // it is supposed to seperate out strings and make things do. not in this implementation. cause reasons. 
+Serial.println(cvalue);
+*/
+
 }
 
 /*************************************************************************************************
@@ -421,6 +486,9 @@ void offMode(){
   digitalWrite(T5_1, LOW);
   digitalWrite(T5_2, LOW);
 
+  // Mercury Vapor Lights off
+  digitalWrite(MVL, LOW);
+
   // Waterfall Off
   digitalWrite(PUMP, LOW);
 
@@ -450,35 +518,4 @@ void tempRegulation(){
   return;
 }
 
-/*
-#include <OneWire.h>
-#include <DallasTemperature.h>
 
-// Data wire is plugged into port 2 on the Arduino
-#define ONE_WIRE_BUS A0
-
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
-DeviceAddress insideThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };
-
-void setup(void)
-{
-  Serial.begin(9600);
-  sensors.begin();
-  
-}
-
-
-void loop(void)
-{ 
-  // call sensors.requestTemperatures() to issue a global temperature 
-  // request to all devices on the bus
-  Serial.print("Requesting temperatures...");
-  sensors.requestTemperatures(); // Send the command to get temperatures
-  float temptoprint = sensors.getTempF(insideThermometer);
-  Serial.println("DONE");
-  
-  Serial.print(" Temp F: ");
-  Serial.println(temptoprint); // Makes a second call to getTempC and then converts to Fahrenheit
-}
-*/
