@@ -166,7 +166,7 @@ int main(void) {
     damperServos.attach(6); 
 
     // SERIAL
-    Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
+    //Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
     // [[J]]: Just as an aside, you can leave the serial commands and surround them with #if/#endif
 
     // Starts ethernet and Server
@@ -184,7 +184,7 @@ int main(void) {
 
     // Time Setpoints
     dayStartTime = 8;
-    nightStartTime = 14;
+    nightStartTime = 17k;
     offMode();
   }
 
@@ -273,7 +273,7 @@ void listenForEthernetClients() {
         // respond to client only after last line received
         if ('\n' == c && currentLineIsBlank) {
           // send a standard http response header
-          Serial.println(HTTP_req);
+          //Serial.println(HTTP_req);
           client.println("HTTP/1.1 200 OK");
           // remainder of header follows below, depending on if
           // web page or XML page is requested
@@ -386,52 +386,27 @@ void XML_response(EthernetClient cl)
   //      cl.print("<o>");
   cl.print(digitalRead(PUMP));
   cl.print("</o>\n</data>");
-
+  
+  
+  //cl.print(targetTemp);
+ // cl.print("</v>\n<v>");
+  
+ // cl.print(dayStartTime);
+ // cl.print("</v>\n<v>");
+  
+  //cl.print(nightStartTime);
+ // cl.print("</v>\n<v>");
+  
+ // cl.print(ventMode);
+ // cl.print("</v>\n</data>");
   //      cl.print("</data>");   
 
 }
 
 void setEnviroControls()
 {
-  /* okay, so, this is what a normal request looks like 
-   GET /ajax_inputs&nocache=359634.24970390L
-   
-   then, when we get a request from the form, it'll look something like this
-   GET /?dayStart=8&nightStart=15 HTTP/1.10L
-   
-   and, if your'e curious, on first page load, what the request looks like
-   GET / HTTP/1.1
-   Host: 10.1.1.100
-   Conne
-   GET /ajax_inputs&nocache=522250.52053100L
-   
-   Ideally, I'd like to be able to at least set the day start time, night start time, 
-   requested temperature and requested humidity. there are others, but we'll see what we can come up with. 
-   
-   I can always change what the return values are, even add a special character into it?
-   Also of note, if one value is entered, and the other is not, it returns nothing after the =
-   
-   This is the form section of the HTML code. 
-   <form id="systemSettings" name="settingsForm">
-   <input type="number" name="dayStart" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
-   <input type="number" name="nightStart" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
-   <input type="submit" value="Update Settings">
-   </form>  
-   
-   I think i'm also running up against ram limits, or something, because with some functions,
-   it'll cause the web page to no longer be displayed. 
-   The GET request is still processsed, but does not return the webFile
-   to the browser.
-   */
-
-  //This section assumes that the HTTP request will be in the order
-  //dayStartTime, nightStartTime, targetTemp, targetRH
-  //And that ALL FOUR are present.
-  //This code is BRITTLE.
-  //
-  //A word on memory - the first parse line adds 138B. A single strncpy line adds
-  //22B.  All four parsings plus the strncpy's adds 260B. This left my sketch size
-  //at 31,884.  Writing my own strncpy cost MORE.
+  // This section parses and pulls the numbers from the web page form sumission GET request. 
+  //Thanks to Darkmoonsinger for the hard work on this, its amazing code. 
   unsigned char index;
   crudeParse(HTTP_req, &dayStartTime, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
@@ -441,10 +416,12 @@ void setEnviroControls()
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
   crudeParse(HTTP_req, &targetRH, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
+/*
     Serial.println(dayStartTime);
     Serial.println(nightStartTime);
     Serial.println(targetTemp);
     Serial.println(targetRH);
+*/
 }
 
 /*************************************************************************************************
