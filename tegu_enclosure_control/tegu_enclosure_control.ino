@@ -2,7 +2,7 @@
  
  Orlando Science Center - Automated Tegu Enclosure Control Program
  
- This controls all the things for the tegu enclosure, and allows
+ This controls all the things for the tegu enclosure and allows
  a webpage to make changes and provide feedback
  
  Author:    MKing - hybridsix
@@ -13,6 +13,8 @@
  A big thanks to darkmoonsinger for late night code reviews
  
  Lots of code snippits and ideas obtained through examples provided with libraries
+ 
+ [[J]]: Look for comments from me prefaced with [[J]]. -(-*
  
  
  */
@@ -57,22 +59,24 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
 
 //MAC Address
 byte mac[] = { 
-  0x90, 0xA2, 0xDA, 0x0E, 0x40, 0x64, }; // Sets the Mac Address of the program to that of the device. 
+  0x90, 0xA2, 0xDA, 0x0E, 0x40, 0x64, }; // Sets the Mac address of the program to that of the device. 
 //Change these to real values
 IPAddress ip(10,1,1,100); // Sets the manual IP address of the device. Change to real values
 EthernetServer server(80);  // Create Server at port 8088 [[J]]: Do you mean 80 or 8088?
 File webFile;
-char HTTP_req[REQ_BUF_SZ] = {0}; // Buffered HTTP request stored as null terminated string
+char HTTP_req[REQ_BUF_SZ] = {
+  0}; // Buffered HTTP request stored as null terminated string
 char req_index = 0;              // Index into HTTP_req buffer
 
 /*************************************************************************************************
  *                                  Dallas 1 Wire Sensor Settings                                 *
  **************************************************************************************************/
-#define ONE_WIRE_BUS A0               // Where is the data pin plugged into?
+#define ONE_WIRE_BUS A0               // Where is the data pin plugged in?
 //define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
 OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices 
 DallasTemperature dSensors(&oneWire);
-DeviceAddress dThermometer { 0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//28A327230500007F; // Device address
+DeviceAddress dThermometer { 
+  0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//28A327230500007F; // Device address
 
 
 /*************************************************************************************************
@@ -118,11 +122,11 @@ byte hysDrift; //[[J]]: A comment on what this is might be appropriate here
 boolean hysActive;
 byte dayStartTime;  //[[J]]: Might be worth defining default here
 byte nightStartTime;
-byte isDayFlag;
+byte isDayFlag;  //Byte instead of boolean for XML exchange
 boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling [[J]]: Make this a byte, to match use?
 byte systemMode;
 /*
-  define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
+            define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
  define eTargetRH   2
  define eDayStartTime 3
  define eNightStartTime 4 
@@ -157,12 +161,12 @@ int main(void) {
 
     // Initialize the Dallas OneWire Sensors
     dSensors.begin();
- 
+
     //Sets up servos to be controlled. One output going to three servos.
     damperServos.attach(6); 
 
     // SERIAL
-     Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
+    Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
     // [[J]]: Just as an aside, you can leave the serial commands and surround them with #if/#endif
 
     // Starts ethernet and Server
@@ -170,6 +174,9 @@ int main(void) {
     server.begin();                      //start to listen for clients
 
     // Target Temperature ane RH Initial Setpoints
+    //[[J]]: I think it would be cleaner/easier to set these all on 
+    //declaration? It may not save space, but it'll be easier on you, 
+    //since this code is never revisited.
     targetTemp = 85;      // Degrees Farenheit
     targetRH = 85;        // % Relative Humidity
     hysActive = 0;          // Sets hysteresis to off - allows function to operate
@@ -196,15 +203,18 @@ int main(void) {
         //Serial.println("DayMode");
         dayMode();          // Day mode power settings 
         isDayFlag = 1;
-      } else {
+      } 
+      else {
         //Serial.println("NightMode");
         nightMode();        // Night mode power settings 
         isDayFlag = 0;
       } 
-    } else if (digitalRead(SERVICE_ENABLE_PIN)){
+    } 
+    else if (digitalRead(SERVICE_ENABLE_PIN)){
       systemMode = SERVICE_STATE;
       serviceMode();
-    } else {
+    } 
+    else {
       systemMode = OFF_STATE; 
       offMode();
     }
@@ -274,13 +284,12 @@ void listenForEthernetClients() {
             client.println("Content-Type: text/xml");
             client.println("Connection: keep-alive"); 
             client.println();
-            setEnviroControls();
+            setEnviroControls();  //[[J]]: Why is this in the middle of this?
             // send XML file containing input states
             XML_response(client);
-          }
+          } 
+          else {  // web page request
 
-          
-           else {  // web page request
             // send rest of HTTP header
             client.println("Content-Type: text/html"); //[[J]]: Oddly enough, no memory savings here
             client.println("Connection: keep-alive");
@@ -322,104 +331,108 @@ void listenForEthernetClients() {
 
 // send the XML file with switch statuses and analog value
 void XML_response(EthernetClient cl)
-  {
+{
   //[[J]]: Concatenating what was on separate lines saves us 12B/line, give or take
-  cl.print("<?xml version = \"1.0\" ?>");
-  cl.print("<data>");
-    cl.print("<sen>");
-    cl.print(tempDallas1);
-    cl.print("</sen>");
-  //
-    cl.print("<sen>");
-    cl.print(tempSHT1x);
-    cl.print("</sen>");
-  //
-    cl.print("<sen>");
-    cl.print(rhSHT1x);
-    cl.print("</sen>");
-  //
-    cl.print("<m>");
-    cl.print(systemMode);
-    cl.print("</m>");
-    
-    cl.print("<m>");
-    cl.print(isDayFlag);
-    cl.print("</m>");
-   
-    cl.print("<t>");
-    cl.print(tm.Hour);
-    cl.print(":");
-    cl.print(tm.Minute);
-    cl.print("</t>");
+  cl.print("<?xml version = \"1.0\" ?>\n<data>\n<sen>");
+  //    cl.print("<data>");
+  //      cl.print("<sen>");
+  cl.print(tempDallas1);
+  cl.print("</sen>\n<sen>");
 
-//
-    cl.print("<o>");
-    cl.print(digitalRead(T5_1));
-    cl.print("</o>");
+  //      cl.print("<sen>");
+  cl.print(tempSHT1x);
+  cl.print("</sen>\n<sen>");
 
-    cl.print("<o>");
-    cl.print(digitalRead(T5_2));
-    cl.print("</o>");
+  //      cl.print("<sen>");
+  cl.print(rhSHT1x);
+  cl.print("</sen>\n<m>");
 
-    cl.print("<o>");
-    cl.print(digitalRead(MVL));
-    cl.print("</o>");
+  //      cl.print("<m>");
+  cl.print(systemMode);
+  cl.print("</m>\n<m>");
 
-    cl.print("<o>");
-    cl.print(digitalRead(FAN));
-    cl.print("</o>");
+  //      cl.print("<m>");
+  cl.print(isDayFlag);
+  cl.print("</m>\n<t>");
 
-    cl.print("<o>");
-    cl.print(digitalRead(PUMP));
-    cl.print("</o>");
+  //      cl.print("<t>");
+  cl.print(tm.Hour);
+  cl.print(":");
+  cl.print(tm.Minute);
+  cl.print("</t>\n<o>");
 
-  cl.print("</data>");   
+  //      cl.print("<o>");
+  cl.print(digitalRead(T5_1));
+  cl.print("</o>\n<o>");
+
+  //      cl.print("<o>");
+  cl.print(digitalRead(T5_2));
+  cl.print("</o>\n<o>");
+
+  //      cl.print("<o>");
+  cl.print(digitalRead(MVL));
+  cl.print("</o>\n<o>");
+
+  //      cl.print("<o>");
+  cl.print(digitalRead(FAN));
+  cl.print("</o>\n<o>");
+
+  //      cl.print("<o>");
+  cl.print(digitalRead(PUMP));
+  cl.print("</o>\n</data>");
+
+  //      cl.print("</data>");   
 }
 
 void setEnviroControls()
 {
-/* okay, so, this is what a normal request looks like 
-GET /ajax_inputs&nocache=359634.24970390L
+  /* okay, so, this is what a normal request looks like 
+   GET /ajax_inputs&nocache=359634.24970390L
+   
+   then, when we get a request from the form, it'll look something like this
+   GET /?dayStart=8&nightStart=15 HTTP/1.10L
+   
+   and, if your'e curious, on first page load, what the request looks like
+   GET / HTTP/1.1
+   Host: 10.1.1.100
+   Conne
+   GET /ajax_inputs&nocache=522250.52053100L
+   
+   Ideally, I'd like to be able to at least set the day start time, night start time, 
+   requested temperature and requested humidity. there are others, but we'll see what we can come up with. 
+   
+   I can always change what the return values are, even add a special character into it?
+   Also of note, if one value is entered, and the other is not, it returns nothing after the =
+   
+   This is the form section of the HTML code. 
+   <form id="systemSettings" name="settingsForm">
+   <input type="number" name="dayStart" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
+   <input type="number" name="nightStart" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
+   <input type="submit" value="Update Settings">
+   </form>  
+   
+   I think i'm also running up against ram limits, or something, because with some functions,
+   it'll cause the web page to no longer be displayed. 
+   The GET request is still processsed, but does not return the webFile
+   to the browser.
+   */
 
-then, when we get a request from the form, it'll look something like this
-GET /?dayStart=8&nightStart=15 HTTP/1.10L
-
-and, if your'e curious, on first page load, what the request looks like
-GET / HTTP/1.1
-Host: 10.1.1.100
-Conne
-GET /ajax_inputs&nocache=522250.52053100L
-
-Ideally, I'd like to be able to at least set the day start time, night start time, 
-requested temperature and requested humidity. there are others, but we'll see what we can come up with. 
-
-I can always change what the return values are, even add a special character into it?
-Also of note, if one value is entered, and the other is not, it returns nothing after the =
-
-This is the form section of the HTML code. 
-      <form id="systemSettings" name="settingsForm">
-         <input type="number" name="dayStart" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
-         <input type="number" name="nightStart" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
-         <input type="submit" value="Update Settings">
-      </form>  
-
-I think i'm also runningup against ram limits, or something, because with some functions,
-it'll cause the web page to no longer be displayed. The GET request is still processsed, but does not return the webFile
-to the browser.
-*/
-
-      //// This section will return a byte of where the first character of the "value" right after the equals would start
-      // this works up until you have a two digit time. It also always returnst he first value of the nocache= number. *shrug*
-//char* cindex = (strchr(HTTP_req,'dayStart='));
-//byte index = (cindex-HTTP_req+1);
-//while(index!=NULL){
-//Serial.println(HTTP_req[index]);
-//}
-
-/*    I really think this would work (or similar) but It crashes/runs out of ram or something.
-char * cvalue = (strtok(HTTP_req, "?=&")); // it is supposed to seperate out strings and make things do. not in this implementation. cause reasons. 
-Serial.println(cvalue);
-*/
+  //This section assumes that the HTTP request will be in the order
+  //dayStartTime, nightStartTime, targetTemp, targetRH
+  //And that ALL FOUR are present.
+  //This code is BRITTLE.
+  //
+  //A word on memory - the first parse line adds 138B. A single strncpy line adds
+  //22B.  All four parsings plus the strncpy's adds 260B. This left my sketch size
+  //at 31,884.  Writing my own strncpy cost MORE.
+  unsigned char index;
+  crudeParse(HTTP_req, &dayStartTime, &index);
+  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
+  crudeParse(&HTTP_req[index], &nightStartTime, &index);
+  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
+  crudeParse(&HTTP_req[index], &targetTemp, &index);
+  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
+  crudeParse(&HTTP_req[index], &targetRH, &index);
 
 }
 
@@ -510,11 +523,47 @@ void tempRegulation(){
   }  
   if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
     ventMode = false ;                              // Indicate we're out of hysteresis condition
-    hysActive = false;
+    hysActive = false; 
     damperServos.write(DAMPERS_CLOSED);
     // Serial.println("Recirculate Active");
   }  
   return;
 }
+
+/*
+ * Crude parsing function to scan a given char[] string for the first
+ * number found after the first '='. Stops at following '&', ' ', or null.
+ * 
+ * Parameters: str[] - string to parse; ret - blank unsigned char * to 
+ * hold found number; index - blank char * to hold index of next '&'
+ * Returns: void
+ *
+ * CAUTION: This code is BRITTLE. It does not handle strings longer
+ * than 255 characters nor can it parse numbers greater than 255 digits.
+ * This is done for efficiency, given the ranges of numbers for the expected
+ * use- day and night are 0-23, temp is < 212, humidity is < 101. 
+ */
+void crudeParse(char str[], unsigned char * ret, unsigned char * index) {
+  unsigned char i = 0;
+  unsigned char num = 0;
+  while (str[i]) {
+    if ('=' == str[i]) { //Imitation of indexOf and strstr
+      num = num*10 + (str[++i] - '0'); //Imitation of atoi
+      i++;
+
+      while (!('\0' == str[i] || '&' == str[i] || ' ' == str[i])) { 
+        num = num*10 + (str[i]-'0'); //Imitation of atoi
+        i++;
+      }
+      *index = i;
+
+      break;
+    }
+    i++;
+  }
+
+  *ret = num;
+}
+
 
 
