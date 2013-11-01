@@ -53,7 +53,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
  **************************************************************************************************/
 
 // size of buffer used to capture HTTP requests
-#define REQ_BUF_SZ   40
+#define REQ_BUF_SZ   60
 
 //MAC Address
 byte mac[] = { 
@@ -268,7 +268,7 @@ void listenForEthernetClients() {
           // remainder of header follows below, depending on if
           // web page or XML page is requested
           // Ajax request - send XML file
-          if (strstr(HTTP_req, "ajax_inputs")) {
+          if (strstr(HTTP_req, "ajax")) {
             // send rest of HTTP header
             // [[J]]: Memory savings of 8B if concatenated with next line, but readability decreases
             client.println("Content-Type: text/xml");
@@ -323,52 +323,52 @@ void XML_response(EthernetClient cl)
   //[[J]]: Concatenating what was on separate lines saves us 12B/line, give or take
   cl.print("<?xml version = \"1.0\" ?>");
   cl.print("<data>");
-    cl.print("<sensor>");
+    cl.print("<sen>");
     cl.print(tempDallas1);
-    cl.print("</sensor>");
+    cl.print("</sen>");
   //
-    cl.print("<sensor>");
+    cl.print("<sen>");
     cl.print(tempSHT1x);
-    cl.print("</sensor>");
+    cl.print("</sen>");
   //
-    cl.print("<sensor>");
+    cl.print("<sen>");
     cl.print(rhSHT1x);
-    cl.print("</sensor>");
+    cl.print("</sen>");
   //
-    cl.print("<mode>");
+    cl.print("<m>");
     cl.print(systemMode);
-    cl.print("</mode>");
+    cl.print("</m>");
     
-    cl.print("<mode>");
+    cl.print("<m>");
     cl.print(isDayFlag);
-    cl.print("</mode>");
+    cl.print("</m>");
    
-    cl.print("<time>");
+    cl.print("<t>");
     cl.print(tm.Hour);
     cl.print(":");
     cl.print(tm.Minute);
-    cl.print("</time>");
+    cl.print("</t>");
 
 //
-    cl.print("<out>");
+    cl.print("<o>");
     cl.print(digitalRead(T5_1));
-    cl.print("</out>");
+    cl.print("</o>");
 
-    cl.print("<out>");
+    cl.print("<o>");
     cl.print(digitalRead(T5_2));
-    cl.print("</out>");
+    cl.print("</o>");
 
-    cl.print("<out>");
+    cl.print("<o>");
     cl.print(digitalRead(MVL));
-    cl.print("</out>");
+    cl.print("</o>");
 
-    cl.print("<out>");
+    cl.print("<o>");
     cl.print(digitalRead(FAN));
-    cl.print("</out>");
+    cl.print("</o>");
 
-    cl.print("<out>");
+    cl.print("<o>");
     cl.print(digitalRead(PUMP));
-    cl.print("</out>");
+    cl.print("</o>");
 
   cl.print("</data>");   
 }
@@ -407,17 +407,16 @@ to the browser.
 
       //// This section will return a byte of where the first character of the "value" right after the equals would start
       // this works up until you have a two digit time. It also always returnst he first value of the nocache= number. *shrug*
-char* cindex = (strchr(HTTP_req,'dayStart='));
-byte index = (cindex-HTTP_req+1);
+//char* cindex = (strchr(HTTP_req,'dayStart='));
+//byte index = (cindex-HTTP_req+1);
 //while(index!=NULL){
-Serial.println(HTTP_req[index]);
+//Serial.println(HTTP_req[index]);
 //}
 
 
 /*    I really think this would work (or similar) but It crashes/runs out of ram or something.
-I have to power cycle the arduino to get back operational 
 
-char * cvalue = (strtok(HTTP_req, "=&"));
+char * cvalue = (strtok(HTTP_req, "?=&")); // it is supposed to seperate out strings and make things do. not in this implementation. cause reasons. 
 Serial.println(cvalue);
 */
 
