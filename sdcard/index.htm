@@ -5,7 +5,7 @@
         <script>
         function getArduinoData()
         {
-            nocache = "&nocache=" + Math.random() * 1000000;
+            //nocache = "&nocache=" + Math.random() * 1000000;
             var request = new XMLHttpRequest();
             request.onreadystatechange = function()
             {
@@ -14,91 +14,91 @@
                         if (this.responseXML != null) {
                             // extract XML data from XML file (containing switch states and analog value)
                             document.getElementById("input1").innerHTML =
-                                this.responseXML.getElementsByTagName('sensor')[0].childNodes[0].nodeValue;
+                                this.responseXML.getElementsByTagName('sen')[0].childNodes[0].nodeValue;
                             document.getElementById("input2").innerHTML =
-                                this.responseXML.getElementsByTagName('sensor')[1].childNodes[0].nodeValue;
+                                this.responseXML.getElementsByTagName('sen')[1].childNodes[0].nodeValue;
                             document.getElementById("input3").innerHTML =
-                                this.responseXML.getElementsByTagName('sensor')[2].childNodes[0].nodeValue;	
+                                this.responseXML.getElementsByTagName('sen')[2].childNodes[0].nodeValue;	
 			    //
 			// Service Mode Set
-			if (this.responseXML.getElementsByTagName('mode')[0].childNodes[0].nodeValue == "0")
+			if (this.responseXML.getElementsByTagName('m')[0].childNodes[0].nodeValue == "0")
 				{
 				document.getElementById("system_mode").innerHTML = "Off";
 				}
-			else if (this.responseXML.getElementsByTagName('mode')[0].childNodes[0].nodeValue == "1")
+			else if (this.responseXML.getElementsByTagName('m')[0].childNodes[0].nodeValue == "1")
 				{	
 				document.getElementById("system_mode").innerHTML = "Auto";
         	       	        }
-			else if (this.responseXML.getElementsByTagName('mode')[0].childNodes[0].nodeValue == "2")
+			else if (this.responseXML.getElementsByTagName('m')[0].childNodes[0].nodeValue == "2")
 				{	
 				document.getElementById("system_mode").innerHTML = "Service"; 
 				}	            
 			// check day or night
-			if (this.responseXML.getElementsByTagName('mode')[1].childNodes[0].nodeValue == "1")
+			if (this.responseXML.getElementsByTagName('m')[1].childNodes[0].nodeValue == "1")
 				{
 				document.getElementById("isDay").innerHTML = "Day";
 				}
-			else if (this.responseXML.getElementsByTagName('mode')[1].childNodes[0].nodeValue == "0")
+			else if (this.responseXML.getElementsByTagName('m')[1].childNodes[0].nodeValue == "0")
 				{	
 				document.getElementById("isDay").innerHTML = "Night";
         	       	        }	
 			// get current time
 			document.getElementById("time").innerHTML =
-                                this.responseXML.getElementsByTagName('time')[0].childNodes[0].nodeValue;
+                                this.responseXML.getElementsByTagName('t')[0].childNodes[0].nodeValue;
 
 			// read the output states
 			//T5 Lamp 1
-			if (this.responseXML.getElementsByTagName('out')[0].childNodes[0].nodeValue == "0")
+			if (this.responseXML.getElementsByTagName('o')[0].childNodes[0].nodeValue == "0")
 				{
 				document.getElementById("T5_1").innerHTML = "Off";
 				}
-			else if (this.responseXML.getElementsByTagName('out')[0].childNodes[0].nodeValue == "1")
+			else if (this.responseXML.getElementsByTagName('o')[0].childNodes[0].nodeValue == "1")
 				{	
 				document.getElementById("T5_1").innerHTML = "On";
         	       	        }	
 			// T5 Lamp 2
-			if (this.responseXML.getElementsByTagName('out')[1].childNodes[0].nodeValue == "0")
+			if (this.responseXML.getElementsByTagName('o')[1].childNodes[0].nodeValue == "0")
 				{
 				document.getElementById("T5_2").innerHTML = "Off";
 				}
-			else if (this.responseXML.getElementsByTagName('out')[1].childNodes[0].nodeValue == "1")
+			else if (this.responseXML.getElementsByTagName('o')[1].childNodes[0].nodeValue == "1")
 				{	
 				document.getElementById("T5_2").innerHTML = "On";
         	       	        }
 			// Mercury Vapor Lamps
-			if (this.responseXML.getElementsByTagName('out')[2].childNodes[0].nodeValue == "0")
+			if (this.responseXML.getElementsByTagName('o')[2].childNodes[0].nodeValue == "0")
 				{
 				document.getElementById("MVL").innerHTML = "Off";
 				}
-			else if (this.responseXML.getElementsByTagName('out')[2].childNodes[0].nodeValue == "1")
+			else if (this.responseXML.getElementsByTagName('o')[2].childNodes[0].nodeValue == "1")
 				{	
 				document.getElementById("MVL").innerHTML = "On";
         	       	        }
 			// Ventilation Fan
-			if (this.responseXML.getElementsByTagName('out')[3].childNodes[0].nodeValue == "0")
+			if (this.responseXML.getElementsByTagName('o')[3].childNodes[0].nodeValue == "0")
 				{
 				document.getElementById("FAN").innerHTML = "Off";
 				}
-			else if (this.responseXML.getElementsByTagName('out')[3].childNodes[0].nodeValue == "1")
+			else if (this.responseXML.getElementsByTagName('o')[3].childNodes[0].nodeValue == "1")
 				{	
 				document.getElementById("FAN").innerHTML = "On";
         	       	        }
 			// Waterfall Pump
-			if (this.responseXML.getElementsByTagName('out')[4].childNodes[0].nodeValue == "0")
+			if (this.responseXML.getElementsByTagName('o')[4].childNodes[0].nodeValue == "0")
 				{
 				document.getElementById("PUMP").innerHTML = "Off";
 				}
-			else if (this.responseXML.getElementsByTagName('out')[4].childNodes[0].nodeValue == "1")
+			else if (this.responseXML.getElementsByTagName('o')[4].childNodes[0].nodeValue == "1")
 				{	
 				document.getElementById("PUMP").innerHTML = "On";
         	       	        }
 		///////////////////////////////////
 			// Get Day and Night Values
-		        document.getElementById("dayStartTime").innerHTML =
-                                this.responseXML.getElementsByTagName('set')[0].childNodes[0].nodeValue;
+		//        document.getElementById("dayStartTime").innerHTML =
+              //                  this.responseXML.getElementsByTagName('set')[0].childNodes[0].nodeValue;
 
-		        document.getElementById("nightStartTime").innerHTML =
-                                this.responseXML.getElementsByTagName('set')[1].childNodes[0].nodeValue;
+		//        document.getElementById("nightStartTime").innerHTML =
+               //                 this.responseXML.getElementsByTagName('set')[1].childNodes[0].nodeValue;
 
 
 
@@ -107,7 +107,8 @@
        		       }
 		}
 	}
-            request.open("GET", "ajax_inputs" + nocache, true);
+            //request.open("GET", "ajax_inputs" + nocache, true);
+            request.open("GET", "ajax", true);
             request.send(null);
             setTimeout('getArduinoData()', 1000);		
         	}
@@ -170,9 +171,9 @@
 		</div>
 		<div class="IO_box">
 			<h2>System Settings</h2>
-			<form id="systemSettings" name="settingsForm" method=post>
-				<input type="number" name="dayStart" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
-				<input type="number" name="nightStart" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
+			<form id="systemSettings" name="settingsForm" method=get >
+				<input type="number" name="d" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
+				<input type="number" name="n" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
 				<input type="submit" value="Update Settings">
 			</form>			
 		</div>

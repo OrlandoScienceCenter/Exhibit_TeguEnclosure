@@ -53,7 +53,7 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
  **************************************************************************************************/
 
 // size of buffer used to capture HTTP requests
-#define REQ_BUF_SZ   60
+#define REQ_BUF_SZ   40
 
 //MAC Address
 byte mac[] = { 
@@ -277,7 +277,10 @@ void listenForEthernetClients() {
             setEnviroControls();
             // send XML file containing input states
             XML_response(client);
-          } else {  // web page request
+          }
+
+          
+           else {  // web page request
             // send rest of HTTP header
             client.println("Content-Type: text/html"); //[[J]]: Oddly enough, no memory savings here
             client.println("Connection: keep-alive");
@@ -413,9 +416,7 @@ to the browser.
 //Serial.println(HTTP_req[index]);
 //}
 
-
 /*    I really think this would work (or similar) but It crashes/runs out of ram or something.
-
 char * cvalue = (strtok(HTTP_req, "?=&")); // it is supposed to seperate out strings and make things do. not in this implementation. cause reasons. 
 Serial.println(cvalue);
 */
@@ -470,7 +471,7 @@ void serviceMode(){
   // Fan on 
   digitalWrite(FAN, HIGH);
 
-  // damperServos Open
+  // damperServos Open 
   damperServos.write(DAMPERS_OPEN);
 
   // Heat lamps off
