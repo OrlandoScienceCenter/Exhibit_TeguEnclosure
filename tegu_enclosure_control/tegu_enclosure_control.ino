@@ -117,7 +117,7 @@ float rhSHT1x;
 float tempDallas1;
 tmElements_t tm; //[[J]]: Explanatory comment?
 unsigned char  targetTemp;
-unsigned char  targetRH;
+//unsigned char  targetRH;
 byte hysDrift; //[[J]]: A comment on what this is might be appropriate here
 boolean hysActive;
 unsigned char dayStartTime;  //[[J]]: Might be worth defining default here
@@ -178,13 +178,13 @@ int main(void) {
     //declaration? It may not save space, but it'll be easier on you, 
     //since this code is never revisited.
     targetTemp = 85;      // Degrees Farenheit
-    targetRH = 85;        // % Relative Humidity
+   // targetRH = 85;        // % Relative Humidity
     hysActive = 0;          // Sets hysteresis to off - allows function to operate
     hysDrift = 2;        // Number of degrees to drift over/under the setpoints
 
     // Time Setpoints
     dayStartTime = 8;
-    nightStartTime = 17k;
+    nightStartTime = 17;
     offMode();
   }
 
@@ -413,9 +413,9 @@ void setEnviroControls()
   crudeParse(HTTP_req, &nightStartTime, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
   crudeParse(HTTP_req, &targetTemp, &index);
-  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
-  crudeParse(HTTP_req, &targetRH, &index);
-  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
+//  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
+//  crudeParse(HTTP_req, &targetRH, &index);
+//  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);   /// Dumped RH monitoring requirments. Might reenable in a future release
 /*
     Serial.println(dayStartTime);
     Serial.println(nightStartTime);

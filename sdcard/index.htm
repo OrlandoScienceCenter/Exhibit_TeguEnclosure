@@ -5,7 +5,7 @@
         <script>
         function getArduinoData()
         {
-            //nocache = "&nocache=" + Math.random() * 1000000;
+            //nocache = "&nocache=" + Math.random() * 1000000;  /// only need this if you have to work with old versions of IE
             var request = new XMLHttpRequest();
             request.onreadystatechange = function()
             {
@@ -165,7 +165,6 @@
 			<p>System -&nbsp;<span id="system_mode">......</span></p>
 			<p>Day/Night -&nbsp;<span id="isDay">.....</span></p>
 			<p>Time -&nbsp;&nbsp;&nbsp;<span id="time">.....</span></p>
-			<p>Ventilation -<span id="VENT">.....</span></p>
 
 		</div>
 		<div class="IO_box">
@@ -184,7 +183,7 @@
 				<input type="number" name="day" size=2 max=23 min=0 value="">Day Start Hour<br /><br />
 				<input type="number" name="night" size=2 max=23 min=0 value="">Night Start Hour<br /><br />
 				<input type="number" name="Temp" size=2 max=100 min=70 value="">Target Temp<br /><br />
-				<input type="number" name="Humid" size=2 max=100 min=35 value="">Target Humidity<br /><br />				
+		
 			<input type="submit" value="Update Settings">
 			</form>			
 		</div>
