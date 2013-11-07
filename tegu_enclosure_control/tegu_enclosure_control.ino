@@ -7,15 +7,14 @@
  
  Author:    MKing - hybridsix
  
- Some code examples and much help was derrived from the tutorial on 
+ Some code examples and much help was derived from the tutorial on 
  http://startingelectronics.com , Written by W.A. Smith
  
- A big thanks to darkmoonsinger for late night code reviews
+ A big thanks to Darkmoonsinger for late night code reviews
  
- Lots of code snippits and ideas obtained through examples provided with libraries
- 
- [[J]]: Look for comments from me prefaced with [[J]]. -(-*
- 
+ Lots of code snippits and ideas obtained through examples provided with libraries.
+
+  Code uses init() and main() instead of setup() and loop() to save space.
  
  */
 
@@ -23,29 +22,30 @@
  *                                         Libraries                                              *
  **************************************************************************************************/
 
+//Libraries with "lite" in the name have been modified to remove unnecessary
+//functions which consume space.
 #include <Wire.h>              // I2C Library
 #include <SPI.h>               // SPI Library 
 #include <Ethernet.h>          // Ethernet Library
 #include <OneWireLite.h>           // One Wire Comms LIbrary 
 #include <DallasTemperatureLite.h> // Dallas Temp Sensor Library
 #include <DS1307RTC.h>         // DS1307 Real Time Clock Library
-#include <TimeLite.h>              // TIme library for easier workings with time and dates
+#include <TimeLite.h>              // TIme library to more easily work with time and dates
 #include <SD.h>                // SD Card Library
 #include <ServoLite.h>             // Servo Library  
-#include <sht1xaltLite.h>          // New Library for SHT1x Sensor - works much better. 
+#include <sht1xaltLite.h>          // Library for SHT1x Sensor
 
 /*************************************************************************************************
  *                                      SHT1x Settings                                            *
  **************************************************************************************************/
 
-// Set these to whichever pins you connected the SHT1x to:
+// SHT1x pin definitions
 #define dataPin A1
 #define clockPin A2
-// Set this number larger to slow down communication with the SHT1x, which may
-// be necessary if the wires between the Arduino and the SHT1x are long:
+// This number can be set larger to slow down communication with the SHT1x, which may
+// be necessary if the wires between the Arduino and the SHT1x are long.
 #define clockPulseWidth 1
 #define supplyVoltage sht1xalt::VOLTAGE_5V
-// If you want to report tempSHT1xerature units in Fahrenheit instead of Celcius, Change which line is commented/uncomented 
 #define temperatureUnits sht1xalt::UNITS_FAHRENHEIT
 sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temperatureUnits );
 
@@ -54,86 +54,88 @@ sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temp
  *                                  Ethernet/HTTP Settings                                        *
  **************************************************************************************************/
 
-// size of buffer used to capture HTTP requests
+// Size of buffer used to capture HTTP requests
 #define REQ_BUF_SZ   40
 
-//MAC Address
-byte mac[] = { 
-  0x90, 0xA2, 0xDA, 0x0E, 0x40, 0x64, }; // Sets the Mac address of the program to that of the device. 
-//Change these to real values
-IPAddress ip(10,1,1,100); // Sets the manual IP address of the device. Change to real values
-EthernetServer server(80);  // Create Server at port 8088 [[J]]: Do you mean 80 or 8088?
+// Mac address of the device. 
+byte mac[] = { 0x90, 0xA2, 0xDA, 0x0E, 0x40, 0x64, }; 
+// Sets the manual IP address of the device
+IPAddress ip(10,1,1,100); 
+// Create Server at port 80
+EthernetServer server(80);
 File webFile;
-char HTTP_req[REQ_BUF_SZ] = {
-  0}; // Buffered HTTP request stored as null terminated string
-char req_index = 0;              // Index into HTTP_req buffer
+// Buffered HTTP request stored as null terminated string
+char HTTP_req[REQ_BUF_SZ] = {0}; 
+// Index into HTTP_req buffer
+char req_index = 0;
 
 /*************************************************************************************************
  *                                  Dallas 1 Wire Sensor Settings                                 *
  **************************************************************************************************/
-#define ONE_WIRE_BUS A0               // Where is the data pin plugged in?
-//define TEMPERATURE_PRECISION 9       // How many bits of temperature precision
-OneWire oneWire(ONE_WIRE_BUS);        // Setup a oneWire instance to communicate with any OneWire devices 
+
+//Data pin
+#define ONE_WIRE_BUS A0
+// Setup a oneWire instance to communicate with any OneWire devices
+OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature dSensors(&oneWire);
+//Device address: 28A327230500007F
 DeviceAddress dThermometer { 
-  0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };//28A327230500007F; // Device address
+  0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };
 
 
 /*************************************************************************************************
  *                                        Other Pin Defines                                       *
  **************************************************************************************************/
-// These were done as defines instead of taking up an int to save space early on. 
+
 #define T5_1 9
 #define T5_2 8
 #define MVL 7
 #define AUTO_ENABLE_PIN 6
 #define SERVICE_ENABLE_PIN 5
-// Pin 4 is for SD Card  [[J]]: Why isn't this defined here?
+#define SD_PIN 4
 #define PUMP 3
 #define FAN 2
-//A4 SDA    I2C/TWI  [[J]]: Necessary?
-//A5 SCL    I2C/TWI
-Servo damperServos;
+#define ETH_PIN 10
+
 /*************************************************************************************************
  *                                   Set Global Variables                                         *
  **************************************************************************************************/
 
-//[[J]]: Just a note- the lower-scoped you can make your vars, the less memory you use and 
-//memory fragmentation you experience - locals sit in registers unless it runs out of registers, and only
-//then does it get pushed on the stack
-
-#define OFF_STATE 0   //[[J]]: fixing magic numbers
+#define OFF_STATE 0
 #define ON_STATE 1
 #define SERVICE_STATE 2
 
 #define INDEX_FILENAME "index.htm"
 
-#define DAMPERS_OPEN 0
-#define DAMPERS_CLOSED 90
+#define DAMPERS_OPEN 0 //vent/cool
+#define DAMPERS_CLOSED 90 //recirc
 
+Servo damperServos;
+
+//Typedef holding time elements
+tmElements_t tm;
 long lastReadingTime = 0;
+
 float tempSHT1x;
 float rhSHT1x;
 float tempDallas1;
-tmElements_t tm; //[[J]]: Explanatory comment?
-unsigned char  targetTemp;
-//unsigned char  targetRH;
-byte hysDrift; //[[J]]: A comment on what this is might be appropriate here
-boolean hysActive;
-unsigned char dayStartTime;  //[[J]]: Might be worth defining default here
-unsigned char  nightStartTime;
-byte isDayFlag;  //Byte instead of boolean for XML exchange
-boolean ventMode;          // Ventilation mode - 0 Recirculate, 1 vent/cooling [[J]]: Make this a byte, to match use?
+
+// Temp in degrees Farenheit
+unsigned char targetTemp = 85;
+// Number of degrees to drift over/under the setpoints
+byte hysDrift = 2;
+// Hysteresis on/off - allows function to operate
+boolean hysActive = 0;
+
+unsigned char dayStartTime = 8;
+unsigned char nightStartTime = 17;
+//Typed as a byte instead of boolean for XML exchange
+byte isDayFlag;
+
+boolean ventMode;
 byte systemMode;
-/*
-            define eTargetTemp 1  // EEPROM Defines - TBD  [[J]]: Of course, comment this well.
- define eTargetRH   2
- define eDayStartTime 3
- define eNightStartTime 4 
- */
 
 int main(void) {
-  //void setup()
 
   /*************************************************************************************************
    *                                              SETUP                                             *
@@ -150,285 +152,250 @@ int main(void) {
     pinMode (AUTO_ENABLE_PIN, INPUT);
     pinMode (SERVICE_ENABLE_PIN, INPUT); 
 
-    // Initialize the SD Card
-    pinMode(10, OUTPUT);        // Temporarily Disable the Ethernet Chip to select the SD Card [[J]]: Why is this a magic number?
-    digitalWrite(10, HIGH);
-    SD.begin(4);             // Initialize SD Card [[J]]: magic number
+    // Temporarily disable the ethernet chip to select the SD card
+    pinMode(ETH_PIN, OUTPUT);
+    digitalWrite(ETH_PIN, HIGH);
+    // Initialize SD card
+    SD.begin(SD_PIN);
 
     // Start Sensiron SHT1x Sensor(s)
     sensor.configureConnection();
-    sensor.softReset();  // Reset the SHT1x, in case the Arduino was reset during communication:
+    // Reset the SHT1x in case the arduino was reset during communication:
+    sensor.softReset();
 
     // Initialize the Dallas OneWire Sensors
     dSensors.begin();
 
     //Sets up servos to be controlled. One output going to three servos.
-    damperServos.attach(6); 
+    damperServos.attach(AUTO_ENABLE_PIN); 
 
-    // SERIAL
-    //Serial.begin(9600);                  // Serial for debugging. Might need to drop the serial to save space. 
-    // [[J]]: Just as an aside, you can leave the serial commands and surround them with #if/#endif
+    // Starts ethernet and server
+    //Initialize Ethernet device
+    Ethernet.begin (mac, ip);
+    //Start to listen for clients
+    server.begin();
 
-    // Starts ethernet and Server
-    Ethernet.begin (mac, ip);            //Initialize Ethernet device
-    server.begin();                      //start to listen for clients
-
-    // Target Temperature ane RH Initial Setpoints
-    //[[J]]: I think it would be cleaner/easier to set these all on 
-    //declaration? It may not save space, but it'll be easier on you, 
-    //since this code is never revisited.
-    targetTemp = 85;      // Degrees Farenheit
-   // targetRH = 85;        // % Relative Humidity
-    hysActive = 0;          // Sets hysteresis to off - allows function to operate
-    hysDrift = 2;        // Number of degrees to drift over/under the setpoints
-
-    // Time Setpoints
-    dayStartTime = 8;
-    nightStartTime = 17;
+    //Initial state of the system defaults to off.
     offMode();
   }
 
   /*************************************************************************************************
    *                                              LOOP                                              *
    **************************************************************************************************/
-  //void loop(){
   while (1) {
     delay (100);
-    //[[J]]: This saved 8 bytes. Not a lot, but something. Unless there's a reason have it in each branch.
-    getSensorData(); // Pull all the sensor data. No returns, all values plugged into global vars
+    // Pull all the sensor data. No returns, all values plugged into global vars
+    getSensorData();
     if (digitalRead(AUTO_ENABLE_PIN)){
       systemMode = ON_STATE;
-      tempRegulation();     // Checks temp, opens/closes dampers as necessary
-      if(isDay()){            // Check Day/Night States, and do the appropriate on/offs of equipment     
-        //Serial.println("DayMode");
-        dayMode();          // Day mode power settings 
+      
+      // Checks temp, opens/closes dampers as necessary
+      tempRegulation();
+      // Check day/night states, and do the appropriate on/offs of equipment     
+      if(isDay()){
+        // Day mode power settings 
+        dayMode();
         isDayFlag = 1;
-      } 
-      else {
-        //Serial.println("NightMode");
-        nightMode();        // Night mode power settings 
+      } else {
+        // Night mode power settings
+        nightMode();
         isDayFlag = 0;
       } 
-    } 
-    else if (digitalRead(SERVICE_ENABLE_PIN)){
+    } else if (digitalRead(SERVICE_ENABLE_PIN)){
       systemMode = SERVICE_STATE;
       serviceMode();
-    } 
-    else {
+    } else {
       systemMode = OFF_STATE; 
       offMode();
     }
 
-    listenForEthernetClients();          /// Listens for HTTP client requests
+    // Listens for HTTP client requests
+    listenForEthernetClients();
   }
 }
-
 
 /*************************************************************************************************
  *                                        Sensor Data Grab                                        *
  **************************************************************************************************/
-void getSensorData() { // check for a reading no more than once a second.
+
+// Check for a reading no more than once a second
+void getSensorData() {
   if (millis() - lastReadingTime > 1000){
-    dSensors.requestTemperatures();                 // Send the Command to get the temperatures from the dallas sensors.
-    tempDallas1 = dSensors.getTempF(dThermometer);  // Request temperature back in Farenheit (easy to change to celcius..)
-    sensor.measure(tempSHT1x, rhSHT1x);             //SHT1x reading
-    RTC.read(tm);                                   //RTC Reading
+    // Get the temperatures from the dallas sensors.
+    dSensors.requestTemperatures();
+    // Request temperature back in Farenheit
+    tempDallas1 = dSensors.getTempF(dThermometer);
+    sensor.measure(tempSHT1x, rhSHT1x);
+    RTC.read(tm);
     lastReadingTime = millis();
   }
 } 
 
-
-
-
 /*************************************************************************************************
- *                                     Day/ Night mode check                                      *
+ *                                     Day/night mode check                                      *
  **************************************************************************************************/
-boolean isDay() { // is it day or night?
-  // Serial.print("isDay  ");
-  // Serial.println((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
+boolean isDay() { 
   return ((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
 }
 
-
-
-
 /*************************************************************************************************
- *                              Ethernet/ HTTP Request Processing                                 *
+ *                              Ethernet/HTTP Request Processing                                 *
  **************************************************************************************************/
-void listenForEthernetClients() {
-  EthernetClient client = server.available();  // try to get client
 
-  if (client) {  // got client?
+void listenForEthernetClients() {
+  //Determine if the server has an available client connection
+  EthernetClient client = server.available();
+
+  // got client?
+  if (client) {
     boolean currentLineIsBlank = true;
     while (client.connected()) {
-      if (client.available()) {   // client data available to read
-        char c = client.read(); // read 1 byte (character) from client
-        // buffer first part of HTTP request in HTTP_req array (string)
-        // leave last element in array as 0 to null terminate string (REQ_BUF_SZ - 1)
+      // Client has data available to read
+      if (client.available()) {
+        // Read 1 byte (character) from client
+        char c = client.read();
+        // Buffer first part of HTTP request in HTTP_req array (string)
+        // Leave last element  (REQ_BUF_SZ - 1) in array as \0 to null-terminate string
         if (req_index < (REQ_BUF_SZ - 1)) {
-          HTTP_req[req_index] = c;          // save HTTP request character
+          // Save HTTP request character
+          HTTP_req[req_index] = c;
           req_index++;
         }
-        // last line of client request is blank and ends with \n
-        // respond to client only after last line received
+        
+        // Last line of client request is blank and ends with \n
+        // Respond to client only after last line received
         if ('\n' == c && currentLineIsBlank) {
-          // send a standard http response header
-          //Serial.println(HTTP_req);
+          // Send a standard http response header
           client.println("HTTP/1.1 200 OK");
-          // remainder of header follows below, depending on if
-          // web page or XML page is requested
+          
+          // Remainder of header follows below, 
+          // whose content depends on if HTML or XML page is requested.
+
           // Ajax request - send XML file
           if (strstr(HTTP_req, "ajax")) {
-            // send rest of HTTP header
-            // [[J]]: Memory savings of 8B if concatenated with next line, but readability decreases
+            // Send rest of HTTP header
             client.println("Content-Type: text/xml");
             client.println("Connection: keep-alive"); 
             client.println();
+            
             if (strstr(HTTP_req, "?")){
-              setEnviroControls();  //[[J]]: Why is this in the middle of this?
-              
+              setEnviroControls();
             }
-            // send XML file containing input states
+            
+            // Send XML file containing input states
             XML_response(client);
             
-          } 
-          else {  // web page request
-
-            // send rest of HTTP header
-            client.println("Content-Type: text/html"); //[[J]]: Oddly enough, no memory savings here
+          } else {
+            // Send rest of HTTP header
+            client.println("Content-Type: text/html");
             client.println("Connection: keep-alive");
             client.println();
+            
             if (strstr(HTTP_req, "?")){
               setEnviroControls();
               }
-            // send web page
-            webFile = SD.open(INDEX_FILENAME);        // open web page file
+            
+            // Send HTML
+            
+            // Open web page file
+            webFile = SD.open(INDEX_FILENAME);
+            // Check if the file has been opened
             if (webFile) {
               while(webFile.available()) {
-                client.write(webFile.read()); // send web page to client
+                // Send HTML to client
+                client.write(webFile.read());
               }
               webFile.close();
             }
           }
-          // reset buffer index and all buffer elements to 0
+          
+          // Reset buffer index and all buffer elements to 0
           req_index = 0;
-          memset(HTTP_req, '0', REQ_BUF_SZ); //Set the string's memory to all 0s for length REQ_BUF_SZ
+          //Set the string's memory to all 0s for length REQ_BUF_SZ
+          memset(HTTP_req, '0', REQ_BUF_SZ);
           break;
         }
-        // every line of text received from the client ends with \r\n
+        
+        // Every line of text received from the client ends with \r\n
         if ('\n' == c) {
           // last character on line of received text
           // starting new line with next character read
           currentLineIsBlank = true;
-        } 
-        else if ('\r' != c) {
+        } else if ('\r' != c) {
           // a text character was received from client
           currentLineIsBlank = false;
         }
       } // end if (client.available())
     } // end while (client.connected())
-    delay(1);      // give the web browser time to receive the data
-    client.stop(); // close the connection
+
+    // Give the web browser time to receive the data
+    delay(1);
+    // Close the connection
+    client.stop();
   } // end if (client)
 }
 /*************************************************************************************************
  *                                      XML Response Generator                                   *
  *************************************************************************************************/
 
-// send the XML file with switch statuses and analog value
+// Send the XML file with switch statuses and analog value
 void XML_response(EthernetClient cl)
 {
-  //[[J]]: Concatenating what was on separate lines saves us 12B/line, give or take
   cl.print("<?xml version = \"1.0\" ?>\n<data>\n<sen>");
-  //    cl.print("<data>");
-  //      cl.print("<sen>");
   cl.print(tempDallas1);
   cl.print("</sen>\n<sen>");
 
-  //      cl.print("<sen>");
   cl.print(tempSHT1x);
   cl.print("</sen>\n<sen>");
 
-  //      cl.print("<sen>");
   cl.print(rhSHT1x);
   cl.print("</sen>\n<m>");
 
-  //      cl.print("<m>");
   cl.print(systemMode);
   cl.print("</m>\n<m>");
 
-  //      cl.print("<m>");
   cl.print(isDayFlag);
   cl.print("</m>\n<t>");
 
-  //      cl.print("<t>");
   cl.print(tm.Hour);
   cl.print(":");
   cl.print(tm.Minute);
   cl.print("</t>\n<o>");
 
-  //      cl.print("<o>");
   cl.print(digitalRead(T5_1));
   cl.print("</o>\n<o>");
 
-  //      cl.print("<o>");
   cl.print(digitalRead(T5_2));
   cl.print("</o>\n<o>");
 
-  //      cl.print("<o>");
   cl.print(digitalRead(MVL));
   cl.print("</o>\n<o>");
 
-  //      cl.print("<o>");
   cl.print(digitalRead(FAN));
   cl.print("</o>\n<o>");
 
-  //      cl.print("<o>");
   cl.print(digitalRead(PUMP));
-  cl.print("</o>\n</data>");
-  
-  
-  //cl.print(targetTemp);
- // cl.print("</v>\n<v>");
-  
- // cl.print(dayStartTime);
- // cl.print("</v>\n<v>");
-  
-  //cl.print(nightStartTime);
- // cl.print("</v>\n<v>");
-  
- // cl.print(ventMode);
- // cl.print("</v>\n</data>");
-  //      cl.print("</data>");   
-
+  cl.print("</o>\n</data>"); 
 }
 
+  // This section parses and pulls the numbers from the web page form submission GET request.
 void setEnviroControls()
 {
-  // This section parses and pulls the numbers from the web page form sumission GET request. 
-  //Thanks to Darkmoonsinger for the hard work on this, its amazing code. 
+  //Thanks to Darkmoonsinger for the hard work on this; it's amazing code. 
   unsigned char index;
   crudeParse(HTTP_req, &dayStartTime, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
   crudeParse(HTTP_req, &nightStartTime, &index);
   strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
   crudeParse(HTTP_req, &targetTemp, &index);
-//  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);
-//  crudeParse(HTTP_req, &targetRH, &index);
-//  strncpy(HTTP_req, &HTTP_req[index], sizeof(HTTP_req)-1);   /// Dumped RH monitoring requirments. Might reenable in a future release
-/*
-    Serial.println(dayStartTime);
-    Serial.println(nightStartTime);
-    Serial.println(targetTemp);
-    Serial.println(targetRH);
-*/
 }
 
 /*************************************************************************************************
  *                                         Mode Definitions                                       *
  **************************************************************************************************/
+
+// This will set what is on/off in day mode. 
 void dayMode(){
-  // This will determine what is on/off in day mode. 
   // T5 lights on
   digitalWrite(T5_1, HIGH);
   digitalWrite(T5_2, HIGH);
@@ -443,8 +410,8 @@ void dayMode(){
   digitalWrite(MVL, HIGH);
 }
 
+// This will set what is on/off in night mode. 
 void nightMode(){
-  // This will determine what is on/off in night mode. 
   // T5 Lights off
   digitalWrite(T5_1, LOW);
   digitalWrite(T5_2, LOW);
@@ -452,16 +419,15 @@ void nightMode(){
   // Waterfall off
   digitalWrite(PUMP, LOW);
 
-  // Fan on /low?
+  // Fan on
   digitalWrite(FAN, LOW);
 
   // Heat Lamps off
   digitalWrite(MVL, LOW);
 }
 
-
+// This will set what is on/off in service mode. 
 void serviceMode(){
-  // This will determine what is on/off in service mode. 
   // T5 Lights at half power
   digitalWrite(T5_1, HIGH);
   digitalWrite(T5_2, LOW);
@@ -472,21 +438,20 @@ void serviceMode(){
   // Fan on 
   digitalWrite(FAN, HIGH);
 
-  // damperServos Open 
+  // Damper servos open 
   damperServos.write(DAMPERS_OPEN);
 
   // Heat lamps off
   digitalWrite(MVL, LOW);
-
 }
 
+// This will set what is on/off in OFF mode. 
 void offMode(){
-  // This will determine what is on/off in OFF mode. 
   // T5 Lights at half power
   digitalWrite(T5_1, LOW);
   digitalWrite(T5_2, LOW);
 
-  // Mercury Vapor Lights off
+  // Mercury vapor lights off
   digitalWrite(MVL, LOW);
 
   // Waterfall Off
@@ -497,24 +462,27 @@ void offMode(){
 }
 
 void tempRegulation(){
-  /*  Serial.println("Temp Regulation");
-   Serial.println(tempSHT1x);
-   Serial.println(targetTemp);
-   Serial.println(hysActive);
-   */
   boolean cooling = false;
-  if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){  // if the Temperature from the SHT1x sensor is greater than the target temperature, plus the hysteresis drift, and if Hystereis is off
-    ventMode = true ;                                 // sets the return value to 1, indicating we're in a cooling stage
-    hysActive = true;                           // Indicaate we're in a hystereis condition, to not toggle the dampers on/off too fast
-    damperServos.write(DAMPERS_OPEN);// go to damper control, and turn the dampers open for fresh air (0 = outside air, 1 = recirculate)
-    //  Serial.println("Cooling Active");
+  
+  // If the temperature from the SHT1x sensor is greater than 
+  // the target temperature plus the hysteresis drift, 
+  // and if hystereis is off, set cooling and indicate that
+  // we're in a hysteresis condition, to avoid toggling
+  // the dampers on/off too fast. Open the dampers for fresh air.
+  if ((tempSHT1x > targetTemp + hysDrift) && (!hysActive)){
+    ventMode = true;
+    hysActive = true;
+    damperServos.write(DAMPERS_OPEN);
   }  
+
+  // Otherwise, indicate we're out of hysteresis condition
+  // and set vars appropriately.
   if ((tempSHT1x < targetTemp - hysDrift) && (hysActive)){
-    ventMode = false ;                              // Indicate we're out of hysteresis condition
+    ventMode = false;
     hysActive = false; 
     damperServos.write(DAMPERS_CLOSED);
-    // Serial.println("Recirculate Active");
   }  
+
   return;
 }
 
@@ -536,6 +504,14 @@ void crudeParse(char str[], unsigned char * ret, unsigned char * index) {
   unsigned char i = 0;
   unsigned char num = 0;
   while (str[i]) {
+    //The expected parse string is in the format 
+    //"GET /?dayStart=8&nightStart=15&targetTemp=85 HTTP/1.10L"
+    //So read to the first '=', then grab everything after until
+    //we get to a '&'. Subtract the value of '0', which gives us
+    //the actual number from the ascii value (as each successive number
+    //is offset from '0' by its own value). Add that value to the
+    //previous value multiplied by 10 (to shift the previous leftwards
+    //value a tens place. Repeat until fin.
     if ('=' == str[i]) {
       num = num*10 + (str[++i] - '0');
       i++;
