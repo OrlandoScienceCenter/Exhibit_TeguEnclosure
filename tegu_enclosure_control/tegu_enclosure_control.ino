@@ -93,8 +93,9 @@ DeviceAddress dThermometer {
 #define AUTO_ENABLE_PIN 6
 #define SERVICE_ENABLE_PIN 5
 #define SD_PIN 4
-#define PUMP 3
-#define FAN 2
+#define SERVOPIN 3
+#define PUMP 2
+#define FAN 1
 #define ETH_PIN 10
 
 /*************************************************************************************************
@@ -167,7 +168,7 @@ int main(void) {
     dSensors.begin();
 
     //Sets up servos to be controlled. One output going to three servos.
-    damperServos.attach(AUTO_ENABLE_PIN); 
+    damperServos.attach(SERVOPIN); 
 
     // Starts ethernet and server
     //Initialize Ethernet device
