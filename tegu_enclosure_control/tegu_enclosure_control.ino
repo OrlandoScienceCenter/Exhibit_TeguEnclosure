@@ -122,7 +122,7 @@ float rhSHT1x;
 float tempDallas1;
 
 // Temp in degrees Farenheit
-unsigned char targetTemp = 85;
+unsigned char targetTemp = 80;
 // Number of degrees to drift over/under the setpoints
 byte hysDrift = 2;
 // Hysteresis on/off - allows function to operate
@@ -236,7 +236,7 @@ void getSensorData() {
  *                                     Day/night mode check                                      *
  **************************************************************************************************/
 boolean isDay() { 
-  return ((tm.Hour >= dayStartTime) && (tm.Hour <= nightStartTime));
+  return ((tm.Hour >= dayStartTime) && (tm.Hour < nightStartTime));
 }
 
 /*************************************************************************************************
