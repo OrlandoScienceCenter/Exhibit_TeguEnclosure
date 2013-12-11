@@ -94,8 +94,8 @@ DeviceAddress dThermometer {
 #define SERVICE_ENABLE_PIN 5
 #define SD_PIN 4
 #define SERVOPIN 3
-#define PUMP 2
-#define FAN 1
+#define FAN 2
+#define PUMP 1
 #define ETH_PIN 10
 
 /*************************************************************************************************
