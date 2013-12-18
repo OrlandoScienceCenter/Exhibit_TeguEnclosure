@@ -28,7 +28,6 @@
 #include <SPI.h>               // SPI Library 
 #include <Ethernet.h>          // Ethernet Library
 #include <OneWireLite.h>           // One Wire Comms LIbrary 
-//#include <DallasTemperatureLite.h> // Dallas Temp Sensor Library
 #include <DS1307RTC.h>         // DS1307 Real Time Clock Library
 #include <TimeLite.h>              // TIme library to more easily work with time and dates
 #include <SD.h>                // SD Card Library
@@ -81,12 +80,7 @@ char req_index = 0;
 OneWire dSensor(ONE_WIRE_BUS);
 //DallasTemperature dSensors(&oneWire);
 //Device address: 28A327230500007F 
-byte dSensorAddr [8] = {  0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };
-byte dSensorData[12];
-float dSensorC; 
-float dSensorF;
-
-
+const byte dSensorAddr [8] = {  0x28, 0xA3, 0x27, 0x23, 0x05, 0x00, 0x00, 0x7F };
 
 /*************************************************************************************************
  *                                        Other Pin Defines                                       *
@@ -171,9 +165,7 @@ int main(void) {
 
     // Initialize the Dallas OneWire Sensors
     dSensor.reset(); // Reset the OneWire Bus
-    dSensor.select(dSensorAddr);  // Select the address
-    dSensor.write(0x44);    // Write the data to the Dallas Sensor to start temp conversion  
-    
+   
     //Sets up servos to be controlled. One output going to three servos.
     damperServos.attach(SERVOPIN); 
 
@@ -185,6 +177,7 @@ int main(void) {
 
     //Initial state of the system defaults to off.
     offMode();
+    delay(1000); // System delay before start. Gives things a chance to catch up
   }
 
   /*************************************************************************************************
@@ -231,31 +224,38 @@ void getSensorData() {
   if (millis() - lastReadingTime > 1000){
     // Get the temperatures from the dallas sensors.
     tempDallas1 = dallasSensorRead();
-    //tempDallas1 = dSensors.getTempF(dThermometer);
     sensor.measure(tempSHT1x, rhSHT1x);
     RTC.read(tm);
     lastReadingTime = millis();
-    dSensor.write(0x44);    // Write the data to the Dallas Sensor to start temp conversion  
-  }
+    }
 } 
 
 float dallasSensorRead(){
   // Read and convert all the yummy sensor data
-  dSensor.write(0xBE);         // Read Scratchpad
-
-  // Convert the data to actual temperature
-  // because the result is a 16 bit signed integer, it should
-  // be stored to an "int16_t" type, which is always 16 bits
-  // even when compiled on a 32 bit processor.
-  int16_t raw = (dSensorData[1] << 8) | dSensorData[0];
-    if (dSensorData[7] == 0x10) {
-      // "count remain" gives full 12 bit resolution
-      raw = (raw & 0xFFF0) + 12 - dSensorData[6];
+  byte data[12];
+ 
+    dSensor.reset();
+    dSensor.select(dSensorAddr);    
+    dSensor.write(0xBE);         // Read Scratchpad
+  
+  for (byte i = 0; i < 9; i++) {           // we need 9 bytes
+    data[i] = dSensor.read();
     }
-  dSensorC = (float)raw / 16.0;
-  dSensorF = dSensorC * 1.8 + 32.0;
- return (dSensorF);
-}
+  
+   // Convert the data to actual temperature
+ int16_t raw = (data[1] << 8) | data[0];
+    if (data[7] == 0x10) {
+      // "count remain" gives full 12 bit resolution
+      raw = (raw & 0xFFF0) + 12 - data[6];
+    }
+   
+  //Celciustemp = (float)raw / 16.0;
+  //to get F we *1.8 + 32
+    dSensor.reset();              // Next 3 lines set up temp read
+    dSensor.select(dSensorAddr);
+    dSensor.write(0x44);        // start conversion
+  return(((float)raw / 16.0) *1.8 + 32);  // Returns the value as farenheit. 
+ }
 
 /*************************************************************************************************
  *                                     Day/night mode check                                      *
