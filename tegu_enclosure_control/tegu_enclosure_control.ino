@@ -44,7 +44,7 @@
 #define clockPin A2
 // This number can be set larger to slow down communication with the SHT1x, which may
 // be necessary if the wires between the Arduino and the SHT1x are long.
-#define clockPulseWidth 1
+#define clockPulseWidth 4
 #define supplyVoltage sht1xalt::VOLTAGE_5V
 #define temperatureUnits sht1xalt::UNITS_FAHRENHEIT
 sht1xalt::Sensor sensor( dataPin, clockPin, clockPulseWidth, supplyVoltage, temperatureUnits );
